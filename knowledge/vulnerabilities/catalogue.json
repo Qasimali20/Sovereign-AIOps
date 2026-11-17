@@ -1,0 +1,26 @@
+{
+ "_about": "Curated, offline CVE catalogue for packages on this fleet. Sovereign: no external feed is queried at runtime. Each entry was reviewed against its references on the date given; add entries the same way (package, upstream affected range, references).",
+ "reviewed": "2026-11-15",
+ "entries": [
+  {"cve": "CVE-2024-6387", "name": "regreSSHion", "package": "openssh-server", "severity": "critical",
+   "summary": "Signal-handler race condition in sshd allows unauthenticated remote code execution as root on glibc-based Linux.",
+   "affected_upstream": ["8.5p1", "9.8p1"], "technique": "T1190",
+   "references": ["https://nvd.nist.gov/vuln/detail/CVE-2024-6387", "https://ubuntu.com/security/CVE-2024-6387"]},
+  {"cve": "CVE-2023-38408", "name": "ssh-agent PKCS#11 remote code execution", "package": "openssh-client", "severity": "high",
+   "summary": "A forwarded ssh-agent can be made to load arbitrary shared libraries, enabling code execution on the agent's host.",
+   "affected_upstream": ["0", "9.3p2"], "technique": "T1021.004",
+   "references": ["https://nvd.nist.gov/vuln/detail/CVE-2023-38408", "https://ubuntu.com/security/CVE-2023-38408"]},
+  {"cve": "CVE-2021-3156", "name": "Baron Samedit", "package": "sudo", "severity": "high",
+   "summary": "Heap-based buffer overflow in sudo's command-line parsing gives any local user root.",
+   "affected_upstream": ["1.8.2", "1.9.5p2"], "technique": "T1068",
+   "references": ["https://nvd.nist.gov/vuln/detail/CVE-2021-3156", "https://ubuntu.com/security/CVE-2021-3156"]},
+  {"cve": "CVE-2025-32463", "name": "sudo chroot local privilege escalation", "package": "sudo", "severity": "critical",
+   "summary": "sudo's -R (--chroot) option loads an attacker-controlled nsswitch.conf, giving a local user root.",
+   "affected_upstream": ["1.9.14", "1.9.17p1"], "technique": "T1068",
+   "references": ["https://nvd.nist.gov/vuln/detail/CVE-2025-32463", "https://ubuntu.com/security/CVE-2025-32463"]},
+  {"cve": "CVE-2024-3094", "name": "xz/liblzma backdoor", "package": "xz-utils", "severity": "critical",
+   "summary": "Malicious code in the xz 5.6.0 and 5.6.1 release tarballs backdoors liblzma, which sshd can load via libsystemd.",
+   "affected_upstream": ["5.6.0", "5.6.2"], "technique": "T1195.002",
+   "references": ["https://nvd.nist.gov/vuln/detail/CVE-2024-3094", "https://ubuntu.com/security/CVE-2024-3094"]}
+ ]
+}
