@@ -1,0 +1,9 @@
+data/
+.venv/
+.env
+__pycache__/
+.pytest_cache/
+ops/bench/.loadkey
+
+# password hashes for Loki basic auth (regenerate on deploy)
+ops/deploy/monitoring/loki/htpasswd-*
