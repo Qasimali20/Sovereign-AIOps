@@ -227,6 +227,9 @@ class Registry:
         ready = [u for u in group if u.key not in exclude and u.available(now, priority)]
         if not ready:
             return None
+        preferred = [u for u in ready if config.GATEWAY_PREFER.get(u.model) == u.node]
+        if preferred:                                      # the other replicas are standby while this one is available
+            ready = preferred
         low = min(u.inflight for u in ready)
         tied = [u for u in ready if u.inflight == low]
         return tied[next(self._rr) % len(tied)]

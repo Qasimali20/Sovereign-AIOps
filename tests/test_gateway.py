@@ -257,6 +257,24 @@ def test_priority_lane_caps_other_clients_but_not_the_agents(monkeypatch):
     assert (u.inflight, u.shared) == (1, 1) and u.available(time.monotonic(), priority=False)
 
 
+def test_preferred_node_takes_all_requests_and_others_are_standby(monkeypatch):
+    """With a preferred node, its replica serves every request; another replica is used only when it is unavailable."""
+    import asyncio, time
+    from backend.core import config
+    from backend.llmops.gateway.registry import Registry
+    monkeypatch.setattr(config, "GATEWAY_PREFER", {"m": "Node-4"})
+    n2, n4 = Upstream("Node-2", "m", "http://a:1", healthy=True), Upstream("Node-4", "m", "http://b:1", healthy=True)
+    n4.inflight = 3                                              # busier, but still preferred
+    reg = Registry.__new__(Registry); reg._rr = iter(range(10**6)); reg._changed = asyncio.Condition()
+    assert all(reg.pick([n2, n4], set()) is n4 for _ in range(5))
+    assert reg.pick([n2, n4], {n4.key}) is n2                    # failover after the preferred replica failed
+    n4.down_until = time.monotonic() + 30
+    assert reg.pick([n2, n4], set()) is n2                       # backed off: the standby takes over
+    monkeypatch.setattr(config, "GATEWAY_PREFER", {})
+    n4.down_until = 0
+    assert {reg.pick([n2, n4], set()).node for _ in range(4)} == {"Node-2"}   # no preference: least in flight
+
+
 def test_asr_real_time_factor_from_transcription_usage(gw):
     """The gateway derives ASR real-time factor (processing time / audio length) from usage.seconds."""
     class Asr(Upstreams):

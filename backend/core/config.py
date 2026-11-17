@@ -120,6 +120,10 @@ GATEWAY_DISCOVERY_S = 15                                         # re-discover m
 GATEWAY_MAX_INFLIGHT = 128                                       # per replica (default)
 # Per-model caps matching each server's --max-num-seqs, so the gateway queues instead of overloading.
 GATEWAY_MAX_INFLIGHT_BY_MODEL: dict[str, int] = {"qwen-chat": 4}   # Node-3 Qwen3-30B runs --max-num-seqs 4
+# Preferred node per model, as AIOPS_GATEWAY_PREFER="model=Node-N,...": requests go to that node's replica while it
+# is available, and the other replicas are standby (failover only). Without an entry, replicas share the load.
+GATEWAY_PREFER: dict[str, str] = dict(p.strip().split("=", 1) for p in os.environ.get("AIOPS_GATEWAY_PREFER", "").split(",")
+                                      if "=" in p)
 GATEWAY_QUEUE_WAIT_S = 20                                        # wait for a free replica before 503
 # Agent priority lane. The platform's own agents (this key name) are never capped. Every other client shares a
 # bounded number of concurrent requests per model, so a burst from apps cannot slow the agents' generation to a

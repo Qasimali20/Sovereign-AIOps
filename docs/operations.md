@@ -567,6 +567,7 @@ WantedBy=timers.target
 | `AIOPS_GATEWAY_PORT` / `AIOPS_GATEWAY_URL` / `AIOPS_GATEWAY_KEY` | 8790 / local / empty | Gateway |
 | `AIOPS_GATEWAY_ALIASES` | `{}` | Alias overrides as JSON |
 | `AIOPS_GATEWAY_STATIC_UPSTREAMS` | `[]` | Upstreams not discovered via Spark Monitor |
+| `AIOPS_GATEWAY_PREFER` | empty | Preferred node per model, `model=Node-N,...`: that node's replica takes every request, the others are standby |
 | `AIOPS_API_RATE` / `AIOPS_API_BURST` | 20 / 200 | Console API rate limit per client IP (requests/s, burst) |
 | `AIOPS_GATEWAY_RATE` / `AIOPS_GATEWAY_BURST` | 100 / 500 | Gateway rate limit per API key (requests/s, burst) |
 | `AIOPS_PROMETHEUS_URL` | `http://<node-3-ip>:9090` | Prometheus for 7- and 30-day node history |
