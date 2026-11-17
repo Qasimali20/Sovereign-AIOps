@@ -1,0 +1,1083 @@
+{
+ "summary": {
+  "requests": 128,
+  "failed_total": 0,
+  "failed_during_outage": 0,
+  "failure_kinds": [],
+  "seconds_to_first_failover_response": 3.3,
+  "seconds_qwen3_tts_down": 138.8,
+  "seconds_to_traffic_back": 148.8,
+  "seconds_whisper_down": 208.8,
+  "served_by_during_outage": {
+   "k2-fsa/OmniVoice": 70,
+   "Qwen/Qwen3-TTS-12Hz-1.7B-Base": 2
+  },
+  "latency_before": {
+   "n": 16,
+   "p50": 0.92,
+   "p95": 1.05
+  },
+  "latency_during": {
+   "n": 72,
+   "p50": 1.88,
+   "p95": 2.27
+  },
+  "latency_after": {
+   "n": 40,
+   "p50": 0.96,
+   "p95": 1.15
+  }
+ },
+ "events": [
+  [
+   1794770052.038219,
+   "baseline: client running against the tts group"
+  ],
+  [
+   1794770083.1066663,
+   "FAULT: Qwen3-TTS killed (Whisper stopped, port held)"
+  ],
+  [
+   1794770086.1071603,
+   "traffic served by OmniVoice on Node-1"
+  ],
+  [
+   1794770221.5400157,
+   "Qwen3-TTS healthy again (systemd restart)"
+  ],
+  [
+   1794770231.5435758,
+   "traffic back on Qwen3-TTS"
+  ],
+  [
+   1794770291.5339015,
+   "Whisper healthy again"
+  ]
+ ],
+ "rows": [
+  {
+   "t": 1794770052.060944,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8519933223724365
+  },
+  {
+   "t": 1794770054.0611796,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8326547145843506
+  },
+  {
+   "t": 1794770056.0615275,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9248449802398682
+  },
+  {
+   "t": 1794770058.061764,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 103724,
+   "latency": 1.0331928730010986
+  },
+  {
+   "t": 1794770060.0618656,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9302237033843994
+  },
+  {
+   "t": 1794770062.0619755,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 88364,
+   "latency": 0.9705150127410889
+  },
+  {
+   "t": 1794770064.0622487,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8407416343688965
+  },
+  {
+   "t": 1794770066.062324,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.91874098777771
+  },
+  {
+   "t": 1794770068.0628898,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.1550395488739014
+  },
+  {
+   "t": 1794770070.0629792,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 103724,
+   "latency": 1.0476176738739014
+  },
+  {
+   "t": 1794770072.0632527,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 88364,
+   "latency": 0.896209716796875
+  },
+  {
+   "t": 1794770074.0634568,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8425807952880859
+  },
+  {
+   "t": 1794770076.0636508,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 76844,
+   "latency": 0.8127527236938477
+  },
+  {
+   "t": 1794770078.0644994,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 0.9953188896179199
+  },
+  {
+   "t": 1794770080.064593,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 103724,
+   "latency": 1.0426957607269287
+  },
+  {
+   "t": 1794770082.06468,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9241127967834473
+  },
+  {
+   "t": 1794770084.064785,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.9140620231628418
+  },
+  {
+   "t": 1794770086.0650141,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8300433158874512
+  },
+  {
+   "t": 1794770088.0651143,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2137908935546875
+  },
+  {
+   "t": 1794770090.2789924,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8352041244506836
+  },
+  {
+   "t": 1794770092.279091,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8497326374053955
+  },
+  {
+   "t": 1794770094.2793043,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8257310390472412
+  },
+  {
+   "t": 1794770096.2795491,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8354699611663818
+  },
+  {
+   "t": 1794770098.2800863,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.335240125656128
+  },
+  {
+   "t": 1794770100.6153994,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8817367553710938
+  },
+  {
+   "t": 1794770102.615597,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.842733383178711
+  },
+  {
+   "t": 1794770104.6156864,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8503551483154297
+  },
+  {
+   "t": 1794770106.6160457,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.9603078365325928
+  },
+  {
+   "t": 1794770108.616468,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2388627529144287
+  },
+  {
+   "t": 1794770110.8554149,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8417754173278809
+  },
+  {
+   "t": 1794770112.8555145,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8720200061798096
+  },
+  {
+   "t": 1794770114.8557062,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8680613040924072
+  },
+  {
+   "t": 1794770116.8557992,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.876603126525879
+  },
+  {
+   "t": 1794770118.8558917,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.242067813873291
+  },
+  {
+   "t": 1794770121.0980332,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8604998588562012
+  },
+  {
+   "t": 1794770123.098126,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8486781120300293
+  },
+  {
+   "t": 1794770125.0982776,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8648366928100586
+  },
+  {
+   "t": 1794770127.098917,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.870621919631958
+  },
+  {
+   "t": 1794770129.0990126,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.251176357269287
+  },
+  {
+   "t": 1794770131.3502634,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8618109226226807
+  },
+  {
+   "t": 1794770133.350753,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8712916374206543
+  },
+  {
+   "t": 1794770135.3513398,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8611648082733154
+  },
+  {
+   "t": 1794770137.3515224,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 2.081765651702881
+  },
+  {
+   "t": 1794770139.433361,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2526910305023193
+  },
+  {
+   "t": 1794770141.6861246,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 2.007845163345337
+  },
+  {
+   "t": 1794770143.694055,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.9145188331604004
+  },
+  {
+   "t": 1794770145.6943724,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.9777727127075195
+  },
+  {
+   "t": 1794770147.6945753,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8697519302368164
+  },
+  {
+   "t": 1794770149.6950438,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2804484367370605
+  },
+  {
+   "t": 1794770151.975578,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8672385215759277
+  },
+  {
+   "t": 1794770153.9758642,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8677477836608887
+  },
+  {
+   "t": 1794770155.9760525,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8806421756744385
+  },
+  {
+   "t": 1794770157.976269,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.866495132446289
+  },
+  {
+   "t": 1794770159.9764526,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.257472276687622
+  },
+  {
+   "t": 1794770162.2340107,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8536858558654785
+  },
+  {
+   "t": 1794770164.2343268,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8755998611450195
+  },
+  {
+   "t": 1794770166.234533,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.87274169921875
+  },
+  {
+   "t": 1794770168.2347467,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8673734664916992
+  },
+  {
+   "t": 1794770170.234951,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2732880115509033
+  },
+  {
+   "t": 1794770172.508374,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8963100910186768
+  },
+  {
+   "t": 1794770174.508555,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.87363600730896
+  },
+  {
+   "t": 1794770176.5087247,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8665201663970947
+  },
+  {
+   "t": 1794770178.5091102,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8803927898406982
+  },
+  {
+   "t": 1794770180.509395,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2597289085388184
+  },
+  {
+   "t": 1794770182.7692723,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.881725788116455
+  },
+  {
+   "t": 1794770184.769443,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8935546875
+  },
+  {
+   "t": 1794770186.769645,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.886242389678955
+  },
+  {
+   "t": 1794770188.7698257,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8874876499176025
+  },
+  {
+   "t": 1794770190.7701468,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.247807025909424
+  },
+  {
+   "t": 1794770193.0180414,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8818044662475586
+  },
+  {
+   "t": 1794770195.0183988,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.887596845626831
+  },
+  {
+   "t": 1794770197.0187275,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8688678741455078
+  },
+  {
+   "t": 1794770199.0188942,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8715312480926514
+  },
+  {
+   "t": 1794770201.0190957,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2730493545532227
+  },
+  {
+   "t": 1794770203.2922997,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8732390403747559
+  },
+  {
+   "t": 1794770205.2926443,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8766865730285645
+  },
+  {
+   "t": 1794770207.2929163,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8805999755859375
+  },
+  {
+   "t": 1794770209.2931461,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8834776878356934
+  },
+  {
+   "t": 1794770211.293297,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.2638182640075684
+  },
+  {
+   "t": 1794770213.5573366,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.888430118560791
+  },
+  {
+   "t": 1794770215.5575774,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8780505657196045
+  },
+  {
+   "t": 1794770217.5578005,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8726935386657715
+  },
+  {
+   "t": 1794770219.5580077,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 88364,
+   "latency": 1.8655731678009033
+  },
+  {
+   "t": 1794770221.5581975,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 101804,
+   "latency": 2.282627582550049
+  },
+  {
+   "t": 1794770223.841005,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 90284,
+   "latency": 1.8898615837097168
+  },
+  {
+   "t": 1794770225.8411555,
+   "status": 200,
+   "model": "k2-fsa/OmniVoice",
+   "node": "Node-1",
+   "bytes": 92204,
+   "latency": 1.8852665424346924
+  },
+  {
+   "t": 1794770227.8413932,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 76844,
+   "latency": 2.8132197856903076
+  },
+  {
+   "t": 1794770230.6547842,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9186959266662598
+  },
+  {
+   "t": 1794770232.6551893,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 0.9927258491516113
+  },
+  {
+   "t": 1794770234.6553867,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.0833115577697754
+  },
+  {
+   "t": 1794770236.6556432,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8708055019378662
+  },
+  {
+   "t": 1794770238.656007,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 76844,
+   "latency": 0.8068866729736328
+  },
+  {
+   "t": 1794770240.6561444,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 88364,
+   "latency": 0.8960361480712891
+  },
+  {
+   "t": 1794770242.6563551,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.0727646350860596
+  },
+  {
+   "t": 1794770244.6570554,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 0.993166446685791
+  },
+  {
+   "t": 1794770246.6573863,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8662490844726562
+  },
+  {
+   "t": 1794770248.6575992,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8661496639251709
+  },
+  {
+   "t": 1794770250.657733,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9309201240539551
+  },
+  {
+   "t": 1794770252.6580365,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.0632588863372803
+  },
+  {
+   "t": 1794770254.6583133,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 119084,
+   "latency": 1.1539900302886963
+  },
+  {
+   "t": 1794770256.65854,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8821759223937988
+  },
+  {
+   "t": 1794770258.6587453,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.839299201965332
+  },
+  {
+   "t": 1794770260.659698,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 92204,
+   "latency": 0.9308009147644043
+  },
+  {
+   "t": 1794770262.660267,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 1.0112054347991943
+  },
+  {
+   "t": 1794770264.660488,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 88364,
+   "latency": 0.9135982990264893
+  },
+  {
+   "t": 1794770266.6606874,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8624074459075928
+  },
+  {
+   "t": 1794770268.6608157,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 76844,
+   "latency": 0.834937572479248
+  },
+  {
+   "t": 1794770270.660964,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 96044,
+   "latency": 0.9698870182037354
+  },
+  {
+   "t": 1794770272.661233,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 1.0114409923553467
+  },
+  {
+   "t": 1794770274.6614418,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.0896756649017334
+  },
+  {
+   "t": 1794770276.6618102,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 88364,
+   "latency": 1.0072054862976074
+  },
+  {
+   "t": 1794770278.6619666,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 69164,
+   "latency": 0.7507951259613037
+  },
+  {
+   "t": 1794770280.6623719,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 96044,
+   "latency": 0.963303804397583
+  },
+  {
+   "t": 1794770282.6625473,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.4345147609710693
+  },
+  {
+   "t": 1794770284.6628256,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 107564,
+   "latency": 1.0891761779785156
+  },
+  {
+   "t": 1794770286.6630816,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 80684,
+   "latency": 0.8313713073730469
+  },
+  {
+   "t": 1794770288.663715,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 73004,
+   "latency": 0.7817895412445068
+  },
+  {
+   "t": 1794770290.663884,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 0.9981856346130371
+  },
+  {
+   "t": 1794770292.6641922,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 119084,
+   "latency": 1.1784782409667969
+  },
+  {
+   "t": 1794770294.6643918,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 115244,
+   "latency": 1.1421644687652588
+  },
+  {
+   "t": 1794770296.6645377,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8659570217132568
+  },
+  {
+   "t": 1794770298.6651275,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 73004,
+   "latency": 0.8026318550109863
+  },
+  {
+   "t": 1794770300.6652963,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 96044,
+   "latency": 0.9595892429351807
+  },
+  {
+   "t": 1794770302.6654713,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 103724,
+   "latency": 1.0431592464447021
+  },
+  {
+   "t": 1794770304.6656322,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 96044,
+   "latency": 0.9658999443054199
+  },
+  {
+   "t": 1794770306.6660557,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8679065704345703
+  },
+  {
+   "t": 1794770308.6663914,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 84524,
+   "latency": 0.8695778846740723
+  },
+  {
+   "t": 1794770310.666683,
+   "status": 200,
+   "model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",
+   "node": "Node-4",
+   "bytes": 99884,
+   "latency": 0.9940540790557861
+  }
+ ]
+}
