@@ -1,0 +1,1582 @@
+{
+ "uid": "aiops-fleet",
+ "title": "Fleet",
+ "description": "All four DGX Sparks: compute, memory, GPU, storage, network. Source: Spark Monitor via the platform exporter.",
+ "tags": [
+  "sovereign-ai-ops"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 41,
+ "version": 1,
+ "editable": false,
+ "graphTooltip": 1,
+ "refresh": "30s",
+ "time": {
+  "from": "now-6h",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "type": "stat",
+   "title": "Nodes reporting",
+   "description": "Nodes whose Spark Monitor answered the last scrape.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_node_up)",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 1,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Models ready",
+   "description": "Model servers ready across the fleet.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_model_ready)",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 2,
+   "gridPos": {
+    "x": 6,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Containers running",
+   "description": "Docker containers running across the four nodes.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_containers{state=\"running\"})",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 3,
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Failed services",
+   "description": "Failed systemd units plus unhealthy containers.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_systemd_units_failed) + sum(aiops_containers_unhealthy)",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 4,
+   "gridPos": {
+    "x": 18,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "id": 5,
+   "type": "row",
+   "title": "Utilisation",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "CPU",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_cpu_percent), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     },
+     "max": 100
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 6,
+   "gridPos": {
+    "x": 0,
+    "y": 5,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Memory used",
+   "description": "GB10 has unified memory: model weights and KV cache count here. Detector warns at 92%.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((100 * aiops_node_memory_used_bytes / aiops_node_memory_total_bytes), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     },
+     "max": 100
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 12,
+    "y": 5,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "GPU utilisation",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_gpu_utilization_percent), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     },
+     "max": 100
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 0,
+    "y": 13,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "GPU temperature",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_gpu_temp_celsius), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "celsius",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 9,
+   "gridPos": {
+    "x": 12,
+    "y": 13,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "GPU power",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_gpu_power_watts), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "watt",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 10,
+   "gridPos": {
+    "x": 0,
+    "y": 21,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Disk used",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((100 * aiops_node_disk_used_bytes / aiops_node_disk_total_bytes), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "percent",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     },
+     "max": 100
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 11,
+   "gridPos": {
+    "x": 12,
+    "y": 21,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "id": 12,
+   "type": "row",
+   "title": "Network",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 29,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Receive",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_network_receive_bytes_per_second), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 13,
+   "gridPos": {
+    "x": 0,
+    "y": 30,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Transmit",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_network_transmit_bytes_per_second), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "Bps",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 14,
+   "gridPos": {
+    "x": 12,
+    "y": 30,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "id": 15,
+   "type": "row",
+   "title": "Availability",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 38,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Node reporting (1 = up)",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_up), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     },
+     "max": 1
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 16,
+   "gridPos": {
+    "x": 0,
+    "y": 39,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Uptime",
+   "description": "A drop to zero is a reboot; the detector opens a 'restarted' incident.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_uptime_seconds), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 17,
+   "gridPos": {
+    "x": 12,
+    "y": 39,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  }
+ ],
+ "links": [
+  {
+   "title": "Sovereign AI Ops",
+   "type": "link",
+   "url": "http://NODE2_ADDR:5170/",
+   "targetBlank": true
+  },
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "sovereign-ai-ops"
+   ],
+   "asDropdown": true
+  }
+ ]
+}

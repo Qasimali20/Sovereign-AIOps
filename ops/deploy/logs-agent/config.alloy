@@ -1,0 +1,140 @@
+// Sovereign AI Ops log collector: one per node. Reads the systemd journal and Docker container
+// logs (read-only mounts), labels them, masks secrets, and pushes to Loki on Node-3.
+// Labels kept low-cardinality: node, environment, component, service, severity.
+
+// --- systemd journal (host services, kernel, sshd, sudo, vLLM units) ---
+loki.relabel "journal" {
+  forward_to = []
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    regex         = "(.+)"
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__journal__systemd_unit", "__journal_syslog_identifier"]
+    separator     = ";"
+    regex         = ";(.+)"
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["service"]
+    regex         = "session-[0-9]+\\.scope"
+    target_label  = "service"
+    replacement   = "user-session"
+  }
+  rule {
+    source_labels = ["service"]
+    regex         = "(.+)\\.service"
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__journal_priority_keyword"]
+    target_label  = "severity"
+  }
+}
+
+loki.source.journal "host" {
+  path          = "/var/log/journal"
+  max_age       = "12h"
+  relabel_rules = loki.relabel.journal.rules
+  labels        = {component = "journal"}
+  forward_to    = [loki.process.redact.receiver]
+}
+
+// --- Docker containers ---
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "service"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.containers.output
+  relabel_rules = discovery.relabel.containers.rules
+  labels        = {component = "container"}
+  forward_to    = [loki.process.redact.receiver]
+}
+
+// --- services that write their own log files instead of the journal (Node-4's vLLM units) ---
+local.file_match "service_files" {
+  path_targets = [
+    {__path__ = "/host-logs/desktop/asr.log", service = "vllm-asr"},
+    {__path__ = "/host-logs/desktop/tts.log", service = "vllm-tts"},
+    {__path__ = "/host-logs/desktop/whisper.log", service = "vllm-whisper"},
+  ]
+}
+
+loki.source.file "service_files" {
+  targets       = local.file_match.service_files.targets
+  tail_from_end = true
+  forward_to    = [loki.process.files.receiver]
+}
+
+loki.process "files" {
+  stage.replace {
+    expression = "(\\x1b\\[[0-9;]*m|\\x00)"
+    replace    = ""
+  }
+  stage.static_labels {
+    values = {component = "file"}
+  }
+  stage.label_drop {
+    values = ["filename"]
+  }
+  forward_to = [loki.process.redact.receiver]
+}
+
+// --- masking and severity for container lines, then ship ---
+loki.process "redact" {
+  // health probes and metric scrapes: high volume, no signal
+  stage.drop {
+    expression = "\"(GET|HEAD) /(metrics|health|healthz|ready|v1/models|api/health)[^\"]*\" (200|204)"
+    drop_counter_reason = "probe"
+  }
+  stage.replace {
+    expression = "(?i)(?:password|passwd|pwd|secret|token|api[_-]?key|authorization)[\"'\\s]*[:=]\\s*[\"']?(?:bearer\\s+)?([^\\s\"',;&]+)"
+    replace    = "<redacted>"
+  }
+  stage.replace {
+    expression = "(?i)bearer\\s+([A-Za-z0-9._~+/=-]{12,})"
+    replace    = "<redacted>"
+  }
+  stage.match {
+    selector = "{component=~\"container|file\"}"
+    stage.regex {
+      expression = "(?i)\\b(?P<lvl>critical|fatal|error|warning|warn|info|debug)\\b"
+    }
+    stage.template {
+      source   = "lvl"
+      template = "{{ if .Value }}{{ ToLower .Value }}{{ else }}info{{ end }}"
+    }
+    stage.replace {
+      source     = "lvl"
+      expression = "^(warn)$"
+      replace    = "warning"
+    }
+    stage.labels {
+      values = {severity = "lvl"}
+    }
+  }
+  forward_to = [loki.write.node3.receiver]
+}
+
+loki.write "node3" {
+  endpoint {
+    url = "http://" + sys.env("LOKI_HOST") + ":3100/loki/api/v1/push"
+    basic_auth {
+      username = "aiops-push"
+      password = sys.env("LOKI_PUSH_PASSWORD")
+    }
+  }
+  external_labels = {node = sys.env("NODE_NAME"), environment = "production"}
+}

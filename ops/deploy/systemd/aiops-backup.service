@@ -1,0 +1,9 @@
+[Unit]
+Description=Sovereign AI Ops backup with restore test and off-node copy
+After=aiops.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/tmc/sovereign-ai-ops
+ExecStart=/home/tmc/sovereign-ai-ops/.venv/bin/python -m backend.core.backup
+Nice=10

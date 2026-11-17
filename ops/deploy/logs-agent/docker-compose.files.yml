@@ -1,0 +1,5 @@
+# Added by deploy.sh only on nodes that have this directory (Node-4: vLLM units log to files there).
+services:
+  alloy:
+    volumes:
+      - /home/tmc/Desktop/logs:/host-logs/desktop:ro

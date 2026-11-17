@@ -1,0 +1,13 @@
+[Unit]
+Description=Sovereign AI Ops - OpenAI-compatible model gateway (:8790)
+After=network-online.target
+
+[Service]
+WorkingDirectory=/home/tmc/sovereign-ai-ops
+EnvironmentFile=/home/tmc/sovereign-ai-ops/.env
+ExecStart=/home/tmc/sovereign-ai-ops/.venv/bin/uvicorn backend.llmops.gateway:app --host 0.0.0.0 --port 8790 --loop uvloop --http httptools --no-access-log --timeout-keep-alive 75
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,19 @@
+# Log collector, one per node; deployed by deploy.sh. Read-only access to the journal and Docker logs.
+name: aiops-logs
+services:
+  alloy:
+    image: grafana/alloy:v1.10.2
+    container_name: aiops-log-agent
+    network_mode: host
+    restart: unless-stopped
+    env_file: .env
+    command: [run, --server.http.listen-addr=127.0.0.1:12345, --storage.path=/var/lib/alloy, /etc/alloy/config.alloy]
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /etc/machine-id:/etc/machine-id:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy
+volumes:
+  alloy-data:

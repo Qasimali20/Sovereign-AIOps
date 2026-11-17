@@ -1,0 +1,59 @@
+# Deployed to Node-3 by deploy.sh. Host networking: Prometheus :9090, Grafana :3000, Loki :3100 (via nginx).
+name: aiops-monitoring
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: aiops-prometheus
+    network_mode: host
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+      - --storage.tsdb.retention.size=50GB
+      - --web.listen-address=0.0.0.0:9090
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+      - prometheus-data:/prometheus
+  grafana:
+    image: grafana/grafana:12.1.1
+    container_name: aiops-grafana
+    network_mode: host
+    restart: unless-stopped
+    depends_on: [prometheus]
+    env_file: .env
+    environment:
+      GF_SERVER_HTTP_PORT: "3000"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_NEWS_NEWS_FEED_ENABLED: "false"
+      GF_USERS_DEFAULT_THEME: dark
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/fleet.json
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+  loki:
+    image: grafana/loki:3.5.3
+    container_name: aiops-loki
+    network_mode: host
+    restart: unless-stopped
+    command: [-config.file=/etc/loki/loki.yml]
+    volumes:
+      - ./loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+  loki-gate:
+    image: nginx:1.27-alpine
+    container_name: aiops-loki-gate
+    network_mode: host
+    restart: unless-stopped
+    depends_on: [loki]
+    volumes:
+      - ./loki/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./loki/htpasswd-push:/etc/nginx/htpasswd-push:ro
+      - ./loki/htpasswd-query:/etc/nginx/htpasswd-query:ro
+volumes:
+  loki-data:
+  prometheus-data:
+  grafana-data:

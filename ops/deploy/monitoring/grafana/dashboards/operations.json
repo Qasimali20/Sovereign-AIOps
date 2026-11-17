@@ -1,0 +1,1555 @@
+{
+ "uid": "aiops-operations",
+ "title": "AI operations",
+ "description": "Incident pipeline: detection, agent investigation, approvals, execution and verification.",
+ "tags": [
+  "sovereign-ai-ops"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 41,
+ "version": 1,
+ "editable": false,
+ "graphTooltip": 1,
+ "refresh": "30s",
+ "time": {
+  "from": "now-24h",
+  "to": "now"
+ },
+ "panels": [
+  {
+   "type": "stat",
+   "title": "Open incidents",
+   "description": "Incidents not yet resolved, recovered, closed or rejected.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_incidents{status!~\"resolved|recovered|closed|action_rejected\"})",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 1,
+   "gridPos": {
+    "x": 0,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Waiting for approval",
+   "description": "Actions proposed by the agent that need a human decision.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "aiops_approvals_pending",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 2,
+   "gridPos": {
+    "x": 6,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Actions executed",
+   "description": "All by the restricted executor, all after approval.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_executions_total)",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 3,
+   "gridPos": {
+    "x": 12,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Verified fixed",
+   "description": "Recovery confirmed by independent health checks.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_verifications_total{outcome=\"resolved\"})",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 4,
+   "gridPos": {
+    "x": 18,
+    "y": 0,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Detector last scan",
+   "description": "Seconds since the detector completed a scan (normally under 30 s).",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "time() - aiops_detector_last_scan_timestamp_seconds",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "decimals": null,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 5,
+   "gridPos": {
+    "x": 0,
+    "y": 4,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Workflows running",
+   "description": "Agent investigations in progress.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "aiops_workflows_running",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 6,
+   "gridPos": {
+    "x": 6,
+    "y": 4,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Policy decisions",
+   "description": "Every proposed action passes the deterministic policy engine.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_policy_decisions_total)",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 7,
+   "gridPos": {
+    "x": 12,
+    "y": 4,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "stat",
+   "title": "Recovered on their own",
+   "description": "Incidents closed because the detector saw the condition clear.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum(aiops_incidents{status=\"recovered\"})",
+     "instant": true
+    }
+   ],
+   "options": {
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ]
+    },
+    "colorMode": "none",
+    "graphMode": "none",
+    "textMode": "value",
+    "justifyMode": "auto",
+    "wideLayout": true
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0,
+     "noValue": "0"
+    },
+    "overrides": []
+   },
+   "id": 8,
+   "gridPos": {
+    "x": 18,
+    "y": 4,
+    "w": 6,
+    "h": 4
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "id": 9,
+   "type": "row",
+   "title": "Incidents",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 8,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "piechart",
+   "title": "Open incidents by domain",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (domain) (aiops_incidents{status!~\"resolved|recovered|closed|action_rejected\"}) > 0",
+     "instant": true,
+     "legendFormat": "{{domain}}"
+    }
+   ],
+   "options": {
+    "pieType": "donut",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "showLegend": true,
+     "values": [
+      "value",
+      "percent"
+     ]
+    },
+    "tooltip": {
+     "mode": "single"
+    },
+    "displayLabels": []
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "sre"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "security"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3dd68c"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "recovered"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "awaiting_approval"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "needs_human"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "diagnosed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "not_resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_denied"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_rejected"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "closed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "investigating"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "open"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "id": 10,
+   "gridPos": {
+    "x": 0,
+    "y": 9,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "piechart",
+   "title": "Incidents by outcome",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "sum by (status) (aiops_incidents) > 0",
+     "instant": true,
+     "legendFormat": "{{status}}"
+    }
+   ],
+   "options": {
+    "pieType": "donut",
+    "reduceOptions": {
+     "calcs": [
+      "lastNotNull"
+     ],
+     "values": false
+    },
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "showLegend": true,
+     "values": [
+      "value",
+      "percent"
+     ]
+    },
+    "tooltip": {
+     "mode": "single"
+    },
+    "displayLabels": []
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "decimals": 0
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "sre"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "security"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3dd68c"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "recovered"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "awaiting_approval"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "needs_human"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "diagnosed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "not_resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_denied"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_rejected"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "closed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "investigating"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "open"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "id": 11,
+   "gridPos": {
+    "x": 12,
+    "y": 9,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "id": 12,
+   "type": "row",
+   "title": "Services",
+   "collapsed": false,
+   "gridPos": {
+    "x": 0,
+    "y": 17,
+    "w": 24,
+    "h": 1
+   },
+   "panels": []
+  },
+  {
+   "type": "timeseries",
+   "title": "Unhealthy containers + failed units",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_containers_unhealthy + on(node) aiops_systemd_units_failed), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 13,
+   "gridPos": {
+    "x": 0,
+    "y": 18,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Containers running",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((aiops_containers{state=\"running\"}), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 14,
+   "gridPos": {
+    "x": 12,
+    "y": 18,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Models ready per node",
+   "description": "",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "label_replace(max by (n) (label_replace((sum by (node) (aiops_model_ready)), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "legendFormat": "{{node}}"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "shades",
+      "fixedColor": "#3d7bf5"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-1$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-1"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-2$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ee6420"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-2"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-3$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-3"
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byRegexp",
+       "options": "^(DGX|Node)-4$"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       },
+       {
+        "id": "displayName",
+        "value": "Node-4"
+       }
+      ]
+     }
+    ]
+   },
+   "id": 15,
+   "gridPos": {
+    "x": 0,
+    "y": 26,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  },
+  {
+   "type": "timeseries",
+   "title": "Detector scan age",
+   "description": "Prometheus alerts (AIOpsDetectorStale) if this exceeds 2 minutes: the watcher of the watcher.",
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "time() - aiops_detector_last_scan_timestamp_seconds",
+     "legendFormat": "scan age"
+    }
+   ],
+   "options": {
+    "legend": {
+     "displayMode": "list",
+     "placement": "bottom",
+     "showLegend": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "lineWidth": 2,
+      "fillOpacity": 8,
+      "showPoints": "never",
+      "spanNulls": 60000,
+      "axisSoftMin": 0,
+      "stacking": {
+       "mode": "none"
+      },
+      "gradientMode": "none"
+     },
+     "color": {
+      "mode": "fixed",
+      "fixedColor": "#8f9bb3"
+     }
+    },
+    "overrides": [
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "sre"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "security"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ec3f88"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3dd68c"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "recovered"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#3d7bf5"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "awaiting_approval"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "needs_human"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "diagnosed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#f0a030"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "not_resolved"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_denied"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#ef4444"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "action_rejected"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "closed"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#7d8796"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "investigating"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     },
+     {
+      "matcher": {
+       "id": "byName",
+       "options": "open"
+      },
+      "properties": [
+       {
+        "id": "color",
+        "value": {
+         "mode": "fixed",
+         "fixedColor": "#9670f2"
+        }
+       }
+      ]
+     }
+    ]
+   },
+   "id": 16,
+   "gridPos": {
+    "x": 12,
+    "y": 26,
+    "w": 12,
+    "h": 8
+   },
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prom"
+   }
+  }
+ ],
+ "links": [
+  {
+   "title": "Sovereign AI Ops",
+   "type": "link",
+   "url": "http://NODE2_ADDR:5170/",
+   "targetBlank": true
+  },
+  {
+   "title": "Dashboards",
+   "type": "dashboards",
+   "tags": [
+    "sovereign-ai-ops"
+   ],
+   "asDropdown": true
+  }
+ ]
+}

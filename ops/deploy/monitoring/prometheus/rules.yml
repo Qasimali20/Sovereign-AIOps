@@ -1,0 +1,46 @@
+# The platform's detector is the primary alerting path (it opens incidents and runs the agent).
+# These rules watch the watcher: they fire when the detector itself, or its view of the fleet, goes dark.
+groups:
+  - name: aiops-meta
+    rules:
+      - alert: AIOpsPlatformDown
+        expr: up{job="aiops"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Sovereign AI Ops platform on Node-2 is not answering scrapes"}
+      - alert: AIOpsDetectorStale
+        expr: time() - aiops_detector_last_scan_timestamp_seconds > 120
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "Detector has not completed a scan for over 2 minutes: incidents are not being opened"}
+      - alert: AuditChainBroken
+        expr: aiops_audit_chain_ok == 0
+        labels: {severity: critical}
+        annotations: {summary: "Audit hash chain verification failed: the audit trail was altered. Restore from backup and investigate."}
+      - alert: AIOpsDetectorErrors
+        expr: aiops_detector_scan_error == 1
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "Detector scans are failing"}
+      - alert: GatewayDown
+        expr: up{job="aiops-gateway"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "Model gateway on Node-2 is down: agents and apps cannot reach models"}
+  - name: fleet
+    rules:
+      - alert: NodeMonitorDown
+        expr: aiops_node_up == 0
+        for: 1m
+        labels: {severity: critical}
+        annotations: {summary: "{{ $labels.node }} is not reporting"}
+      - alert: NodeMemoryHigh
+        expr: aiops_node_memory_used_bytes / aiops_node_memory_total_bytes > 0.92
+        for: 5m
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.node }} memory above 92%"}
+      - alert: ModelQueueBacklog
+        expr: aiops_model_requests_waiting > 0 and aiops_model_requests_running == 0
+        for: 2m
+        labels: {severity: warning}
+        annotations: {summary: "{{ $labels.model }} on {{ $labels.node }} has queued requests and none running"}

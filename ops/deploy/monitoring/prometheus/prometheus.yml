@@ -1,0 +1,33 @@
+# Sovereign AI Ops: Prometheus on Node-3 (the data/observability node).
+# Nothing is installed on the other nodes: the platform exporter republishes Spark Monitor data for all four,
+# and vLLM servers are scraped directly at the targets the platform discovers.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels: {cluster: dgx-spark}
+
+rule_files: [/etc/prometheus/rules.yml]
+
+scrape_configs:
+  # The exporter and gateway label every series with the node it describes: keep those labels (no target
+  # `node` label here, or Prometheus would rename them to exported_node and every series would read Node-2).
+  - job_name: aiops                      # fleet, models, services, incident pipeline
+    scrape_interval: 20s
+    honor_labels: true
+    static_configs: [{targets: ["NODE2_ADDR:5170"]}]
+
+  - job_name: aiops-gateway              # model gateway: requests, errors, latency, in-flight
+    honor_labels: true
+    static_configs: [{targets: ["NODE2_ADDR:8790"]}]
+
+  - job_name: vllm                       # native vLLM metrics: TTFT / ITL / e2e histograms, KV cache, tokens
+    http_sd_configs:
+      - url: http://NODE2_ADDR:5170/metrics/targets
+        refresh_interval: 60s
+    metric_relabel_configs:
+      - source_labels: [__name__]        # drop *_created series: they double the series count for no value
+        regex: ".*_created"
+        action: drop
+
+  - job_name: prometheus
+    static_configs: [{targets: ["127.0.0.1:9090"]}]
