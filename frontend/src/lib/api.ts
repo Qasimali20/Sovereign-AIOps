@@ -279,6 +279,16 @@ export type CapacityNode = {
 export type Capacity = { generated: number; nodes: Record<string, CapacityNode>; disk_warn_pct: number
   models: { node: string; model: string; kind: string; per_day: number[]; change_pct: number | null; peak_running_7d: number | null; peak_kv_7d: number | null }[] }
 
+// Phase 4: dependency graph, impact, trends, placement
+export type VState = 'up' | 'degraded' | 'down'
+export type GVertex = { id: string; type: 'node' | 'server' | 'model' | 'route' | 'component' | 'stack'; label: string
+  node: string | null; state: VState; why: string; requires: { any_of: string[]; effect: VState; why: string }[] }
+export type Affected = { id: string; type: GVertex['type']; label: string; node: string | null; before: VState; state: VState; why: string }
+export type TrendRule = { status: 'ok' | 'warn' | 'insufficient'; detail: string }
+export type Trends = { generated: number; nodes: Record<string, { rules: Record<string, TrendRule>; recurring: { resource: string; detail: string }[] }> }
+export type Advice = { kind: string; severity: 'warning' | 'info'; title: string; action: string }
+export type Placement = { advice: Advice[]; ranking?: { node: string; rank: number | null; fits: boolean; free_gb: number | null; reasons: string[] }[] }
+
 export const api = {
   me: () => req<User>('/me'),
   login: (username: string, password: string) => req<User>('/login', { username, password }),
@@ -313,6 +323,10 @@ export const api = {
   runPerf: () => req<{ started: boolean }>('/llm/perf/run', {}),
   bottlenecks: (window: string) => req<Bottleneck[]>(`/llm/bottlenecks?window=${q(window)}`),
   capacity: () => req<Capacity>('/capacity'),
+  topology: () => req<{ vertices: GVertex[] }>('/topology'),
+  impact: (target: string) => req<{ target: string; affected: Affected[] }>(`/topology/impact?target=${q(target)}`),
+  trends: () => req<Trends>('/trends'),
+  placement: (gb?: number, model?: string) => req<Placement>(`/placement${gb ? `?gb=${gb}${model ? `&model=${q(model)}` : ''}` : ''}`),
   registry: () => req<RegistryState>('/llm/registry'),
   agentOverview: (days = 30) => req<AgentOverview>(`/agent/overview?days=${days}`),
   agentRuns: () => req<AgentRun[]>('/agent/runs?limit=500'),

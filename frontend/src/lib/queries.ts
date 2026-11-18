@@ -96,6 +96,12 @@ export function useRunPerf() {
 }
 export const useBottlenecks = (window: string) =>
   useQuery({ queryKey: ['bottlenecks', window], queryFn: () => api.bottlenecks(window), refetchInterval: 60 * SEC, placeholderData: prev => prev })
+export const useTopology = () => useQuery({ queryKey: ['topology'], queryFn: api.topology, refetchInterval: 30 * SEC })
+export const useImpact = (target: string | null) =>
+  useQuery({ queryKey: ['impact', target], queryFn: () => api.impact(target!), enabled: !!target })
+export const useTrends = () => useQuery({ queryKey: ['trends'], queryFn: api.trends, refetchInterval: 300 * SEC })
+export const usePlacement = (gb?: number) =>
+  useQuery({ queryKey: ['placement', gb], queryFn: () => api.placement(gb), refetchInterval: 300 * SEC, placeholderData: prev => prev })
 export const useCapacity = () => useQuery({ queryKey: ['capacity'], queryFn: api.capacity, refetchInterval: 120 * SEC })
 export const useRegistry = () => useQuery({ queryKey: ['registry'], queryFn: api.registry, refetchInterval: 60 * SEC })
 export const useAgentOverview = () => useQuery({ queryKey: ['agent-overview'], queryFn: () => api.agentOverview(30), refetchInterval: 30 * SEC })

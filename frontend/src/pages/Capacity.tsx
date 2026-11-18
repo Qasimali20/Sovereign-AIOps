@@ -1,9 +1,61 @@
+import { useState } from 'react'
 import { Badge, Card, Page, PageHead, Skeleton } from '../components/ui'
-import { useCapacity } from '../lib/queries'
+import { useCapacity, usePlacement, useTrends } from '../lib/queries'
 import { ago } from '../lib/format'
 
 const gb = (v: number | null | undefined) => v == null ? '–' : `${v.toFixed(v < 10 ? 1 : 0)} GB`
 const days = (v: number | null) => v == null ? 'not on current trend' : v > 3650 ? 'over 10 years' : v > 365 ? `${(v / 365).toFixed(1)} years` : `${Math.round(v)} days`
+
+const RULE: Record<string, string> = { memory_creep: 'Memory leak', gpu_idle_warmer: 'GPU cooling', wifi_weakening: 'Wi-Fi signal' }
+
+function Placement() {
+  const [gb, setGb] = useState(40)
+  const { data } = usePlacement(gb)
+  return (
+    <Card title="Placement" hint="recommendations only: nothing is moved automatically">
+      {data === undefined ? <Skeleton h={120} /> : (
+        <div className="grid g-2">
+          <ul className="items">{data.advice.length === 0 ? <li className="muted">No placement problem.</li> : data.advice.map(a => (
+            <li key={a.title}><Badge tone={a.severity === 'warning' ? 'warn' : 'neutral'}>{a.kind === 'single_point' ? 'no failover' : 'tight'}</Badge> <b>{a.title}</b>
+              <div className="small muted">{a.action}</div></li>
+          ))}</ul>
+          <div>
+            <label className="field">Where would a new model server needing this much memory fit? (GB)
+              <input type="number" min={1} max={130} value={gb} onChange={e => setGb(Math.max(1, Math.min(130, +e.target.value || 1)))} />
+            </label>
+            <ol className="items">{(data.ranking ?? []).map(r => (
+              <li key={r.node}><b>{r.node}</b> {r.fits ? <Badge tone="good">{r.rank === 1 ? 'best fit' : 'fits'}</Badge> : <Badge tone="crit">does not fit</Badge>}
+                <div className="small muted">{r.reasons.join(' · ')}</div></li>
+            ))}</ol>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function Trends() {
+  const { data } = useTrends()
+  return (
+    <Card title="Early warnings" hint="slow trends against each node's own history; rules wait for enough history" bodyClass="card-body tight">
+      {data === undefined ? <div className="card-body"><Skeleton h={100} /></div> : (
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th>Node</th>{Object.keys(RULE).map(r => <th key={r}>{RULE[r]}</th>)}<th>Recurring problems</th></tr></thead>
+            <tbody>{Object.entries(data.nodes).map(([n, x]) => (
+              <tr key={n}><td><b>{n}</b></td>
+                {Object.keys(RULE).map(r => { const v = x.rules[r]; return (
+                  <td key={r} className="small">{v.status === 'warn' ? <Badge tone="warn">warning</Badge> : v.status === 'ok' ? <Badge tone="good">ok</Badge> : <span className="muted">waiting</span>}
+                    <div className="muted">{v.detail}</div></td>) })}
+                <td className="small">{x.recurring.length ? x.recurring.map(r => <div key={r.resource}>{r.resource}: {r.detail}</div>) : <span className="muted">none</span>}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
 
 /** Capacity: room on each node now, how fast disks fill, and how traffic to each model is moving. */
 export default function Capacity() {
@@ -13,6 +65,7 @@ export default function Capacity() {
       <PageHead title="Capacity" sub={data ? `computed ${ago(data.generated)} · forecasts extrapolate the last week` : undefined} />
       {data === undefined ? <Skeleton h={300} /> : (
         <>
+          <Placement />
           <Card title="Memory" hint="unified memory: weights, KV cache and everything else on the node share it" bodyClass="card-body tight">
             <div className="table-wrap">
               <table className="table">
@@ -78,6 +131,7 @@ export default function Capacity() {
               </table>
             </div>
           </Card>
+          <Trends />
         </>
       )}
     </Page>
