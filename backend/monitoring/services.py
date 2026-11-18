@@ -38,7 +38,23 @@ _OS_UNITS = re.compile(
 def _cmd() -> str:
     return ("docker ps -a --format '{{json .}}' 2>/dev/null || echo DOCKER_DENIED; echo " + _SPLIT + "; "
             "systemctl list-units --type=service --all --no-legend --plain --state=failed,auto-restart 2>/dev/null; echo " + _SPLIT + "; "
-            "systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null")
+            "systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null; echo " + _SPLIT + "; "
+            # restart counters: a crash loop is mostly "activating" between attempts, so the problem-unit list above
+            # catches it only when a scan lands in the few seconds of auto-restart. The counter never misses one.
+            "systemctl show --property=Id,NRestarts,Result,ExecMainStatus,ActiveState,SubState '*.service' 2>/dev/null"
+            " | awk 'BEGIN{RS=\"\";ORS=\"\\n\\n\"} /NRestarts=[1-9]/'")
+
+
+def parse_restarts(text: str) -> dict[str, dict]:
+    """Pure: `systemctl show` blocks (blank-line separated) -> {unit: restarts, result, exit status, state}."""
+    out = {}
+    for block in text.strip().split("\n\n"):
+        kv = dict(l.split("=", 1) for l in block.strip().splitlines() if "=" in l)
+        if kv.get("Id") and kv.get("NRestarts", "").isdigit():
+            out[kv["Id"]] = {"restarts": int(kv["NRestarts"]), "result": kv.get("Result", ""),
+                             "exit_status": kv.get("ExecMainStatus", ""),
+                             "state": f'{kv.get("ActiveState", "")}/{kv.get("SubState", "")}'}
+    return out
 
 
 def parse(out: str) -> dict:
@@ -47,6 +63,7 @@ def parse(out: str) -> dict:
     if len(parts) < 3:
         raise ValueError("unexpected collector output")
     dock, problems, running = parts[0], parts[1], parts[2]
+    restarts = parse_restarts(parts[3]) if len(parts) > 3 else {}
     containers, docker_ok = [], "DOCKER_DENIED" not in dock
     for line in dock.strip().splitlines():
         try:
@@ -60,7 +77,7 @@ def parse(out: str) -> dict:
     failed = [{"unit": r[0], "sub": r[3] if len(r) > 3 else "", "known": KNOWN_FAILED_UNITS.get(r[0])} for r in unit_rows]
     apps = [l.split()[0] for l in running.strip().splitlines() if l.strip() and not _OS_UNITS.match(l.split()[0])]
     return {"docker_ok": docker_ok, "containers": sorted(containers, key=lambda c: c["name"]),
-            "problem_units": failed, "app_units": sorted(apps)}
+            "problem_units": failed, "app_units": sorted(apps), "unit_restarts": restarts}
 
 
 def collect(node: config.Node) -> dict:
@@ -100,9 +117,24 @@ class ServiceAlert:
         return f"{self.kind}:{self.node}:{self.resource}"
 
 
+# A unit that crash-loops is up for a few seconds between attempts. It counts as recovered only once it has stayed
+# up, with its restart counter standing still, for this long: one incident per crash loop, not one per attempt.
+UNIT_STABLE_S = 300
+
+
 @dataclass
 class Baseline:
     running: dict[str, set[str]] = field(default_factory=dict)     # node -> containers seen running
+    restarts: dict[str, dict[str, int]] = field(default_factory=dict)       # node -> unit -> last restart count
+    unit_bad_at: dict[str, dict[str, float]] = field(default_factory=dict)  # node -> unit -> last seen failing
+    watching_since: dict[str, float] = field(default_factory=dict)          # node -> first scan (after a platform restart)
+
+
+def unit_settled(base: Baseline, node: str, unit: str, now: float) -> bool:
+    """The unit has not failed, restarted or sat in auto-restart for UNIT_STABLE_S, as far as this process has watched:
+    after a platform restart, a unit counts as stable only once it has been watched for UNIT_STABLE_S."""
+    last_bad = base.unit_bad_at.get(node, {}).get(unit, base.watching_since.get(node, now))
+    return now - last_bad >= UNIT_STABLE_S
 
 
 DECOMMISSIONED_PATH = Path(os.environ.get("AIOPS_DECOMMISSIONED", Path(__file__).resolve().parents[2] / "data" / "decommissioned.json"))
@@ -125,10 +157,12 @@ def decommission(node: str, container: str, by: str, reason: str) -> None:
     store.audit(None, by, "container_decommissioned", {"node": node, "container": container, "reason": reason})
 
 
-def alerts(node: str, snap: dict, base: Baseline) -> list[ServiceAlert]:
-    """Pure over (snapshot, baseline); updates the baseline in place."""
+def alerts(node: str, snap: dict, base: Baseline, now: float | None = None) -> list[ServiceAlert]:
+    """Pure over (snapshot, baseline, now); updates the baseline in place."""
     if not snap.get("ok"):
         return []
+    now = time.time() if now is None else now
+    base.watching_since.setdefault(node, now)
     out: list[ServiceAlert] = []
     seen = base.running.setdefault(node, set())
     planned = decommissioned()
@@ -147,10 +181,27 @@ def alerts(node: str, snap: dict, base: Baseline) -> list[ServiceAlert]:
             out.append(ServiceAlert("svc_container_stopped", node, c["name"], f"Container {c['name']} on {node} stopped ({c['status']})", d))
             seen.discard(c["name"])          # one alert per running -> stopped transition
     seen |= now_running
+    counts = snap.get("unit_restarts") or {}
+    prev, bad = base.restarts.get(node), base.unit_bad_at.setdefault(node, {})
+    units: dict[str, ServiceAlert] = {}
     for u in snap["problem_units"]:
         if u["known"]:
             continue
         kind = "svc_unit_restarting" if u["sub"] == "auto-restart" else "svc_unit_failed"
-        out.append(ServiceAlert(kind, node, u["unit"], f"Service {u['unit']} on {node} {'keeps restarting' if kind.endswith('restarting') else 'has failed'}",
-                                {"unit": u["unit"], "sub": u["sub"]}))
-    return out
+        units[u["unit"]] = ServiceAlert(kind, node, u["unit"], f"Service {u['unit']} on {node} {'keeps restarting' if kind.endswith('restarting') else 'has failed'}",
+                                        {"unit": u["unit"], "sub": u["sub"]})
+    for unit, r in counts.items():
+        # first sight gives no baseline: the count may be from days ago. After that, any increase is a restart.
+        if prev is None or unit in KNOWN_FAILED_UNITS or r["restarts"] <= prev.get(unit, 0):
+            continue
+        units.setdefault(unit, ServiceAlert("svc_unit_restarting", node, unit, f"Service {unit} on {node} keeps restarting",
+                                            {"unit": unit, "sub": r["state"].partition("/")[2]}))
+    for unit, a in units.items():
+        bad[unit] = now
+        if unit in counts:
+            a.detail |= {"restarts": counts[unit]["restarts"], "last_result": counts[unit]["result"],
+                         "last_exit_status": counts[unit]["exit_status"], "state": counts[unit]["state"]}
+            if a.kind == "svc_unit_restarting":
+                a.title = f"Service {unit} on {node} keeps restarting ({counts[unit]['restarts']} restarts)"
+    base.restarts[node] = {u: r["restarts"] for u, r in counts.items()}
+    return out + list(units.values())

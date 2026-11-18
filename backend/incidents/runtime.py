@@ -27,7 +27,8 @@ RECOVERABLE = METRIC_KINDS + ("node_unreachable", "quality_regression", "model_s
 _BUSY = ("executing", "verifying")     # an action owns these; a pending approval expires if the problem clears
 
 
-def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dict], firing: set[str]) -> str | None:
+def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dict], firing: set[str],
+                      svc_base: services.Baseline | None = None, now: float | None = None) -> str | None:
     """Pure: evidence that the incident's condition is gone, or None. Absence of the alert alone is not enough
     (an unreachable node raises nothing about its models); each kind needs a positive observation."""
     if inc["fingerprint"] in firing:
@@ -51,7 +52,11 @@ def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dic
         return (f"container {res} running{' and healthy' if c['health'] == 'healthy' else ''}"
                 if c and c["state"] == "running" and c["health"] != "unhealthy" else None)
     if kind.startswith("svc_unit_"):
-        return None if any(u["unit"] == res for u in snap["problem_units"]) else f"{res} no longer failed"
+        if any(u["unit"] == res for u in snap["problem_units"]):
+            return None
+        if svc_base is not None and not services.unit_settled(svc_base, node, res, time.time() if now is None else now):
+            return None                         # up between crash-loop attempts is not recovered
+        return f"{res} no longer failed" + (f" and stable for {services.UNIT_STABLE_S // 60} min" if svc_base else "")
     return None
 
 
@@ -202,7 +207,7 @@ class Runtime:
         for inc in store.open_incidents_of(RECOVERABLE):
             if inc["status"] in _BUSY or self.is_running(inc["id"]):
                 continue                     # let the workflow finish; the next scan picks it up
-            why = condition_cleared(inc, self._det, self.services, firing)
+            why = condition_cleared(inc, self._det, self.services, firing, self._svc_base)
             if why:
                 if inc["status"] == "awaiting_approval":
                     store.expire_pending(inc["id"], f"problem cleared before a decision: {why}")

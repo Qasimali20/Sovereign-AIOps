@@ -233,3 +233,14 @@ def test_pending_approval_expires_and_cannot_then_be_granted(db):
     assert store.expire_pending(iid, "cleared") == 1
     assert store.decide_approval(aid, True, "alice", "late") is None          # too late: nothing to approve
     assert store.get_approval(aid)["status"] == "expired"
+
+
+def test_unit_incident_held_open_while_crash_loop_is_up_between_attempts():
+    from backend.monitoring import services
+    base = services.Baseline()
+    svc = {"Node-3": {"ok": True, "containers": [], "problem_units": [], "unit_restarts": {}}}
+    services.alerts("Node-3", svc["Node-3"], base, now=NOW)
+    base.unit_bad_at["Node-3"]["w.service"] = NOW + 60          # restarted a minute later
+    i = inc("svc_unit_restarting", "w.service")
+    assert not runtime.condition_cleared(i, _det(), svc, set(), base, NOW + 120)
+    assert "stable" in runtime.condition_cleared(i, _det(), svc, set(), base, NOW + 60 + services.UNIT_STABLE_S)
