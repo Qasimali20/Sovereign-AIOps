@@ -7,6 +7,7 @@ import { Badge, Card, Empty, KindTag, KINDS, PageHead, Page, Segmented, TabbedPa
 import Requests from './Requests'
 import Evaluations from './Evaluations'
 import Registry from './Registry'
+import Performance from './Performance'
 import { differs, useModelNames } from '../lib/modelNames'
 import type { User } from '../lib/api'
 import { Tile } from '../components/Tile'
@@ -166,7 +167,7 @@ export function ModelServers({ embedded = false }: { embedded?: boolean }) {
 }
 
 const TABS = [{ key: 'servers', label: 'Servers' }, { key: 'requests', label: 'Requests' },
-  { key: 'evals', label: 'Evaluations' }, { key: 'registry', label: 'Registry' }]
+  { key: 'evals', label: 'Evaluations' }, { key: 'performance', label: 'Performance' }, { key: 'registry', label: 'Registry' }]
 
 /** Models: the servers, what the gateway served, how well each model scores, and what each server is (LLMOps, one place). */
 export default function Models({ user }: { user: User }) {
@@ -175,6 +176,7 @@ export default function Models({ user }: { user: User }) {
   return (
     <TabbedPage title="Models" tabs={TABS} current={tab} onChange={k => setParams(k === 'servers' ? {} : { tab: k }, { replace: true })}>
       {tab === 'requests' ? <Requests embedded /> : tab === 'evals' ? <Evaluations user={user} embedded />
+        : tab === 'performance' ? <Performance user={user} embedded />
         : tab === 'registry' ? <Registry embedded /> : <ModelServers embedded />}
     </TabbedPage>
   )

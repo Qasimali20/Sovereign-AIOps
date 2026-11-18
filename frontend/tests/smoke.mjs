@@ -9,7 +9,7 @@ const USER = process.env.SMOKE_USER ?? 'admin'
 const PASS = process.env.SMOKE_PASS
 if (!PASS) { console.error('set SMOKE_PASS'); process.exit(2) }
 
-const PAGES = ['/', '/incidents', '/approvals', '/security', '/fleet', '/services', '/drift', '/models', '/models?tab=requests', '/models?tab=evals', '/models?tab=registry',
+const PAGES = ['/', '/incidents', '/approvals', '/security', '/fleet', '/services', '/drift', '/models', '/models?tab=requests', '/models?tab=evals', '/models?tab=registry', '/models?tab=performance', '/capacity',
   '/governance?tab=agent', '/governance?tab=deployments', '/history',
   '/governance?tab=audit', '/governance?tab=policies', '/users', '/account']
 // detail pages are reached through the UI, so the links themselves are tested too

@@ -259,6 +259,26 @@ export type Deployment = { id: string; created: number; updated: number; status:
   playbook: string; nodes: string[]; git_commit: string; reason: string; preview: Record<string, { changed: number }> | null
   result: { recap: Record<string, { changed: number; failed: number; unreachable: number }>; drift: Record<string, string[]> } | null }
 
+// Inference intelligence: benchmarks, regressions, bottlenecks, capacity
+export type PerfResult = { node: string; model: string; port: number; scenario: 'short' | 'long_prompt'; t: number
+  skipped: string | null; error: string | null; ttft_s: number | null; decode_tps: number | null; prefill_tps: number | null
+  prompt_tokens: number | null; engine_version: string | null; runs: number
+  baseline: { ttft_s: number | null; decode_tps: number | null; prefill_tps: number | null } }
+export type PerfRegression = { node: string; model: string; port: number; scenario: string; findings: string[]
+  version_changed: boolean; baseline_runs: number }
+export type PerfState = { running: boolean; last_run: number | null; interval_s: number; results: PerfResult[]
+  regressions: PerfRegression[]; guard: { max_temp_c: number; max_gpu_util: number } }
+export type Finding = { rule: string; severity: 'warning' | 'info'; title: string; detail: string; action?: string }
+export type Bottleneck = { node: string; model: string; kind: string; window: string; findings: Finding[]
+  stats: Record<string, number | null>; gpu: { gpu_avg?: number | null; gpu_max?: number | null } }
+export type CapacityNode = {
+  memory: { used_gb: number; total_gb: number; free_gb: number; peak_gb_7d: number | null; max_new_share: number; max_new_gb: number
+    reserved: { model: string; share: number | null; status: string }[]; reserved_share: number | null; unknown_shares: string[]; tight: boolean } | null
+  disk: { used_gb: number; total_gb: number; pct: number; days_of_history: number; growth_gb_per_day: number | null
+    largest_jump_gb: number | null; jumps_left: number | null; days_to_warn: number | null; days_to_full: number | null } | null }
+export type Capacity = { generated: number; nodes: Record<string, CapacityNode>; disk_warn_pct: number
+  models: { node: string; model: string; kind: string; per_day: number[]; change_pct: number | null; peak_running_7d: number | null; peak_kv_7d: number | null }[] }
+
 export const api = {
   me: () => req<User>('/me'),
   login: (username: string, password: string) => req<User>('/login', { username, password }),
@@ -289,6 +309,10 @@ export const api = {
   evals: () => req<EvalsState>('/llm/evals'),
   evalHistory: (model: string) => req<EvalResult[]>(`/llm/evals/history?model=${q(model)}`),
   runEvals: () => req<{ started: boolean }>('/llm/evals/run', {}),
+  perf: () => req<PerfState>('/llm/perf'),
+  runPerf: () => req<{ started: boolean }>('/llm/perf/run', {}),
+  bottlenecks: (window: string) => req<Bottleneck[]>(`/llm/bottlenecks?window=${q(window)}`),
+  capacity: () => req<Capacity>('/capacity'),
   registry: () => req<RegistryState>('/llm/registry'),
   agentOverview: (days = 30) => req<AgentOverview>(`/agent/overview?days=${days}`),
   agentRuns: () => req<AgentRun[]>('/agent/runs?limit=500'),

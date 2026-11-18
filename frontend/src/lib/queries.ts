@@ -89,6 +89,14 @@ export function useRunEvals() {
   const qc = useQueryClient()
   return useMutation({ mutationFn: api.runEvals, onSuccess: () => qc.invalidateQueries({ queryKey: ['evals'] }) })
 }
+export const usePerf = () => useQuery({ queryKey: ['perf'], queryFn: api.perf, refetchInterval: q => (q.state.data?.running ? 3 * SEC : 60 * SEC) })
+export function useRunPerf() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: api.runPerf, onSuccess: () => qc.invalidateQueries({ queryKey: ['perf'] }) })
+}
+export const useBottlenecks = (window: string) =>
+  useQuery({ queryKey: ['bottlenecks', window], queryFn: () => api.bottlenecks(window), refetchInterval: 60 * SEC, placeholderData: prev => prev })
+export const useCapacity = () => useQuery({ queryKey: ['capacity'], queryFn: api.capacity, refetchInterval: 120 * SEC })
 export const useRegistry = () => useQuery({ queryKey: ['registry'], queryFn: api.registry, refetchInterval: 60 * SEC })
 export const useAgentOverview = () => useQuery({ queryKey: ['agent-overview'], queryFn: () => api.agentOverview(30), refetchInterval: 30 * SEC })
 export const useAgentRuns = () => useQuery({ queryKey: ['agent-runs'], queryFn: api.agentRuns, refetchInterval: 15 * SEC })

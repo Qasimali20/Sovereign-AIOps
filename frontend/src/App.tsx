@@ -11,6 +11,7 @@ import Login from './pages/Login'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Incidents = lazy(() => import('./pages/Incidents'))
 const Drift = lazy(() => import('./pages/Drift'))
+const Capacity = lazy(() => import('./pages/Capacity'))
 const IncidentDetail = lazy(() => import('./pages/IncidentDetail'))
 const Approvals = lazy(() => import('./pages/Approvals'))
 const Fleet = lazy(() => import('./pages/Fleet'))
@@ -60,6 +61,7 @@ export default function App() {
               <Route path="/history" element={<Metrics />} />
               <Route path="/services" element={<Services />} />
               <Route path="/drift" element={<Drift user={user} />} />
+              <Route path="/capacity" element={<Capacity />} />
               <Route path="/models" element={<Models user={user} />} />
               <Route path="/models/:model" element={<ModelDetail />} />
               <Route path="/gateway" element={<Navigate to="/models" replace />} />
