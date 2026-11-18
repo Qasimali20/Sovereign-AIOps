@@ -355,6 +355,33 @@ work. The incident clears when the item is put back, or when an admin accepts th
 new baseline on the Drift page (per item or all, with a reason, audited as `drift_accepted`). The Drift page
 also lists host versions that differ between nodes; that is shown for information and is not drift.
 
+### Controlled deployments
+Changes to the fleet are made with Ansible playbooks (`ops/ansible`), run through one wrapper that previews,
+records and verifies them. The inventory reads node addresses from `.env`; nothing about the fleet is stored in
+the repository. Ansible is an optional dependency group: `uv run --group ops ...`.
+
+| Playbook | Target | What it does | sudo |
+|---|---|---|---|
+| `facts` | all | read-only report of OS, kernel, driver, Docker, CUDA, memory and disk, and what differs between nodes | no |
+| `log-agent` | all | the log collector: settings, configuration, recreated only when something changed | no |
+| `monitoring` | Node-3 | Prometheus, Grafana, Loki: regenerates dashboards, restarts or reloads only what changed | no |
+| `platform` | Node-2 | upgrade to the checked-out commit: refuses a dirty tree (Markdown edits excepted), runs the tests, builds the console, restarts the services, waits until they answer | no |
+| `model-unit` | one node | changes one flag of a model server's systemd unit (for example `--gpu-memory-utilization`), restarts it, waits until it answers | yes |
+
+```bash
+uv run --group ops python ops/scripts/deploy.py log-agent --reason "roll out collector config"
+uv run --group ops python ops/scripts/deploy.py model-unit --limit Node-4 --become --reason "TTS memory share" \
+    -e unit=vllm-tts -e flag=--gpu-memory-utilization -e value=0.15 -e port=8091
+```
+
+The wrapper (1) runs the playbook with `--check --diff` and stops if nothing would change; (2) shows the preview
+and asks for `yes`; (3) records the deployment through the API with the CLI token (audited as
+`deployment_started`, with commit, nodes, reason and preview) and opens a maintenance window on the nodes it
+changes; (4) applies it to those nodes only; (5) closes the record as succeeded or failed with the per-node recap
+(`deployment_finished`) and re-reads the nodes' configuration, printing the drift the change caused.
+`--accept-drift` accepts that drift as the new baseline with the deployment id as the reason. Deployments are
+listed under Governance → Deployments. CI (GitHub Actions) only tests and builds; it never deploys.
+
 ### Log strategy
 One pipeline, one store, one place to search: every node runs the same collector (Grafana Alloy,
 `ops/deploy/logs-agent`), which ships to Loki on Node-3. The console, the investigation agent and Grafana all

@@ -45,6 +45,10 @@ CREATE TABLE IF NOT EXISTS container_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT, t REAL, container TEXT, action TEXT, attrs TEXT
 );
 CREATE INDEX IF NOT EXISTS container_events_ct ON container_events(container, t);
+CREATE TABLE IF NOT EXISTS deployments (
+  id TEXT PRIMARY KEY, created REAL, updated REAL, status TEXT, by TEXT, playbook TEXT, nodes TEXT,
+  git_commit TEXT, reason TEXT, preview TEXT, result TEXT
+);
 CREATE INDEX IF NOT EXISTS incidents_created ON incidents(created);
 CREATE INDEX IF NOT EXISTS evidence_incident ON evidence_records(incident_id);
 CREATE INDEX IF NOT EXISTS steps_incident ON agent_steps(incident_id);
@@ -559,3 +563,31 @@ def has_execution(incident_id: str) -> bool:
     with conn() as c:
         return c.execute("SELECT 1 FROM execution_records e JOIN action_proposals p ON p.id = e.action_id "
                          "WHERE p.incident_id=? LIMIT 1", (incident_id,)).fetchone() is not None
+
+
+# ---------------------------------------------------------------- deployments (controlled changes to the fleet)
+def start_deployment(playbook: str, nodes: list[str], commit: str, reason: str, preview: dict, by: str) -> str:
+    did, now = new_id("DEP"), time.time()
+    with conn() as c:
+        c.execute("BEGIN IMMEDIATE")
+        c.execute("INSERT INTO deployments VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                  (did, now, now, "running", by, playbook, _j(nodes), commit, reason, _j(preview), None))
+        _audit(c, None, by, "deployment_started", {"deployment": did, "playbook": playbook, "nodes": nodes,
+                                                  "commit": commit, "reason": reason, "preview": preview})
+    return did
+
+
+def finish_deployment(did: str, ok: bool, result: dict, by: str) -> bool:
+    with conn() as c:
+        c.execute("BEGIN IMMEDIATE")
+        n = c.execute("UPDATE deployments SET status=?, updated=?, result=? WHERE id=? AND status='running'",
+                      ("succeeded" if ok else "failed", time.time(), _j(result), did)).rowcount
+        if n:
+            _audit(c, None, by, "deployment_finished", {"deployment": did, "ok": ok, "result": result})
+    return bool(n)
+
+
+def deployments(limit: int = 100) -> list[dict]:
+    with conn() as c:
+        rows = c.execute("SELECT * FROM deployments ORDER BY created DESC LIMIT ?", (limit,)).fetchall()
+    return [dict(r) | {k: json.loads(r[k]) if r[k] else None for k in ("nodes", "preview", "result")} for r in rows]

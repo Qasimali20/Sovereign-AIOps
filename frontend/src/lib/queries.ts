@@ -44,6 +44,7 @@ export const useModelBoard = (model: string, range: string) =>
 export const useMetricsBoard = (board: string, range: string) =>
   useQuery({ queryKey: ['metrics-board', board, range], queryFn: () => api.metricsBoard(board, range),
     refetchInterval: range === '1h' ? 30 * SEC : 120 * SEC, placeholderData: prev => prev })
+export const useDeployments = () => useQuery({ queryKey: ['deployments'], queryFn: api.deployments, refetchInterval: 15 * SEC })
 export const useDrift = () => useQuery({ queryKey: ['drift'], queryFn: api.drift, refetchInterval: 30 * SEC })
 export function useDriftAccept() {
   const qc = useQueryClient()

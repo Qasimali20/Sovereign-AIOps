@@ -8,7 +8,7 @@ from backend.core import analytics, config, llm, store
 from backend.monitoring import fleet
 from backend.incidents import tools
 from backend.incidents.runtime import runtime
-from backend.web.security import Admin, Viewer
+from backend.web.security import Admin, Approver, Viewer
 
 router = APIRouter(tags=["infrastructure"])
 
@@ -150,3 +150,56 @@ def drift_check(user: Admin):
     with runtime._scan_lock:                    # not while a detector scan is reading the same state
         runtime.check_drift()
     return {k: (len(v) if v is not None else None) for k, v in runtime.drift_changes.items()}
+
+
+# ---------------------------------------------------------------- controlled deployments
+PLAYBOOKS = ("facts", "log-agent", "monitoring", "platform", "model-unit")
+
+
+class DeploymentStart(BaseModel):
+    playbook: str = Field(pattern=r"^[a-z-]+$")
+    nodes: list[str] = Field(min_length=1, max_length=4)
+    commit: str = Field(pattern=r"^[0-9a-f]{7,40}$")
+    reason: str = Field(min_length=3, max_length=300)
+    minutes: float = Field(default=30, gt=0, le=240)
+    preview: dict = Field(default_factory=dict)       # changed-task counts per node from the --check --diff run
+
+
+class DeploymentFinish(BaseModel):
+    ok: bool
+    recap: dict = Field(default_factory=dict)
+
+
+@router.get("/deployments")
+def deployments(user: Viewer):
+    return store.deployments()
+
+
+@router.post("/deployments")
+def start_deployment(body: DeploymentStart, user: Approver):
+    """Record a deployment and open a maintenance window on its nodes, so what it causes is planned work."""
+    if body.playbook not in PLAYBOOKS:
+        raise HTTPException(422, f"unknown playbook {body.playbook!r}")
+    bad = [n for n in body.nodes if n not in config.NODE_BY_NAME]
+    if bad:
+        raise HTTPException(422, f"unknown nodes {bad}")
+    by = f"human:{user['username']}"
+    did = store.start_deployment(body.playbook, body.nodes, body.commit, body.reason, body.preview, by)
+    for n in body.nodes:
+        store.add_maintenance(n, body.minutes, f"deployment {did}: {body.playbook} ({body.reason})", by)
+    return {"id": did}
+
+
+@router.post("/deployments/{did}/finish")
+def finish_deployment(did: str, body: DeploymentFinish, user: Approver):
+    """Close the record, then re-read the configuration of its nodes so the drift it caused is visible at once."""
+    dep = next((d for d in store.deployments(500) if d["id"] == did), None)
+    if not dep:
+        raise HTTPException(404, "unknown deployment")
+    with runtime._scan_lock:
+        runtime.check_drift()
+    drift = {n: runtime.drift_changes.get(n) for n in dep["nodes"]}
+    result = {"recap": body.recap, "drift": {n: [c["key"] for c in ch or []] for n, ch in drift.items()}}
+    if not store.finish_deployment(did, body.ok, result, f"human:{user['username']}"):
+        raise HTTPException(409, "deployment already finished")
+    return {"id": did, "status": "succeeded" if body.ok else "failed", "drift": drift}

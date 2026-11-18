@@ -255,6 +255,10 @@ export type DriftNode = { ok: boolean; error: string | null; checked: number | n
   updated: number | null; updated_by: string | null; items: number; changes: DriftChange[] | null; inventory: Record<string, string> }
 export type DriftState = { nodes: Record<string, DriftNode>; inconsistent: Record<string, Record<string, string>>; interval_s: number }
 
+export type Deployment = { id: string; created: number; updated: number; status: 'running' | 'succeeded' | 'failed'; by: string
+  playbook: string; nodes: string[]; git_commit: string; reason: string; preview: Record<string, { changed: number }> | null
+  result: { recap: Record<string, { changed: number; failed: number; unreachable: number }>; drift: Record<string, string[]> } | null }
+
 export const api = {
   me: () => req<User>('/me'),
   login: (username: string, password: string) => req<User>('/login', { username, password }),
@@ -266,6 +270,7 @@ export const api = {
   nodeHistory: (node: string, range: string) => req<NodeHistory>(`/fleet/${q(node)}/history?range=${q(range)}`),
   services: () => req<Record<string, NodeServices>>('/services'),
   drift: () => req<DriftState>('/drift'),
+  deployments: () => req<Deployment[]>('/deployments'),
   driftAccept: (node: string, keys: string[] | null, reason: string) =>
     req<{ accepted: string[]; remaining: DriftChange[] }>('/drift/accept', { node, keys, reason }),
   driftCheck: () => req<Record<string, number | null>>('/drift/check', {}),
