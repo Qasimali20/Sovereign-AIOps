@@ -293,10 +293,24 @@ look and animation; in charts GPU is light blue and CPU red.
 ### Service monitoring
 Every scan reads `docker ps -a` and `systemctl list-units` on all nodes (read-only). Alerts: a container
 turns unhealthy, loops restarting, or stops after having been seen running (once per transition); a
-systemd unit fails or crash-loops. `iwpmd.service` (iWARP port mapper, no iWARP NIC) is known-benign and
-shown, never alerted. Production services are investigate-and-recommend only. Node-4: the `tmc` account is not
-in the `docker` group, so its containers are not visible (reported on the Services page). Node-1 already
-runs Prometheus and Grafana containers.
+systemd unit fails or crash-loops. Crash loops are caught from each unit's restart counter (`NRestarts`), not
+only from its state, because a looping unit spends most of its time starting; the incident clears only after the
+unit has stayed up with an unchanged counter for 5 minutes, so one crash loop is one incident. Unit incidents
+include the unit's own log as evidence. `iwpmd.service` (iWARP port mapper, no iWARP NIC) is known-benign and
+shown, never alerted. Production services are investigate-and-recommend only. Node-1 already runs Prometheus
+and Grafana containers.
+
+### Disk and network monitoring
+Each scan also reads, on every node over the same SSH connection, `/proc/diskstats`, `/proc/net/dev`, the
+link state of the physical interfaces, the Wi-Fi station counters (`iw`) and storage/NIC kernel messages
+(`backend/monitoring/hostio.py`). All four nodes reach the office network over Wi-Fi (`wlP9s9`); the wired
+port `enP7s7` is unplugged; the ConnectX ports `enp1s0f1np1` and `enP2p1s0f1np1` are the direct node-to-node
+links. Rules: `disk_io_saturated` (drive 95% busy for 15 min), `disk_error` (NVMe timeout or reset, I/O
+error, filesystem error or read-only remount), `net_errors` (interface errors rising for 3 scans),
+`net_link_down` (an interface seen up goes down), `net_nic_reset` (NIC watchdog) and `net_wifi_degraded`
+(signal at or below -75 dBm for 3 min). Kernel-message incidents are closed by a person; the others clear
+when a fresh reading shows them gone. Series: `aiops_disk_*`, `aiops_network_*`, `aiops_wifi_*` (Fleet
+dashboard, "Storage and network health").
 
 ### Runbook retrieval
 The agent reads versioned runbooks from `knowledge/runbooks/*.md`. Each `## ` section is a chunk
@@ -305,6 +319,11 @@ Retrieval uses the gateway's `embed` then `rerank` aliases, falling back to keyw
 60 s back-off) when the models are unreachable. Runbooks go into a separate `<runbooks>` prompt block
 and can never be cited as evidence. Each incident records a `retrieve_runbooks` step and lists the
 sections and versions it saw under `knowledge` in its report. See `docs/architecture.md` §5.
+Each hypothesis names the runbook sections that informed it in `runbook_ids`, restricted by the response
+schema to the sections retrieved for that incident. AgentOps (Agent runs) shows retrieval method, latency,
+fallback share, how often diagnoses used a retrieved section, the accuracy of rated diagnoses with and
+without one, and how often each section is retrieved and used; `aiops_rag_sections` and
+`aiops_rag_embedding_ok` track the index.
 
 ### Governance and monitoring
 - **Audit:** `audit_events` is a SHA-256 hash chain with append-only triggers, re-verified every
@@ -320,6 +339,43 @@ sections and versions it saw under `knowledge` in its report. See `docs/architec
   Fleet, Model serving and AI operations. Loki on Node-3 collects logs from all four nodes; the agent
   searches it during investigations. The console shows node history from Prometheus and links to
   Grafana as "Metric history".
+
+### Log strategy
+One pipeline, one store, one place to search: every node runs the same collector (Grafana Alloy,
+`ops/deploy/logs-agent`), which ships to Loki on Node-3. The console, the investigation agent and Grafana all
+read the same Loki; nothing reads logs from the nodes directly.
+
+| Source | Collected from | `component` label |
+|---|---|---|
+| systemd units, kernel, sshd, sudo | the journal (`/var/log/journal`, read-only) | `journal` |
+| Docker containers | the Docker socket (read-only) | `container` |
+| Units that write to their own files (Node-4: `vllm-asr`, `vllm-tts`, `vllm-whisper`, `vllm-qwen36`, `vllm-qwen38`, `omni`) | `~/Desktop/logs/*.log`, listed one by one in `config.alloy` | `file` |
+
+**Labels** are kept low-cardinality: `node`, `environment`, `component`, `service`, `severity`. Request
+ids, users and addresses stay in the line, never in a label.
+
+**Masking before shipping:** passwords, tokens, API keys, `Authorization` headers and bearer tokens are
+replaced with `<redacted>` on the node. Health-probe and metric-scrape access lines (`GET /metrics`,
+`/health`, `/v1/models` with a 200) are dropped there too: they are most of the volume and carry no signal.
+
+**Retention:** 14 days in Loki (about 50 MB at current volume). On a collector's first start it reads
+back 12 hours of journal. Longer-term evidence lives elsewhere: incidents and their evidence records in
+the platform database (backed up nightly, 14 copies), metric history in Prometheus, and the gateway's request
+log (metadata only, never prompt or response text, 7 days).
+
+**Access:** Loki listens on localhost on Node-3; the nginx gate on :3100 is the only way in, with separate
+push (collectors) and query (platform, Grafana) credentials. When Loki cannot be read, investigations
+record "log search unavailable" as evidence, never an empty result that reads as "no errors".
+
+**Adding a source.** A service that logs to the journal or runs in Docker is collected without changes.
+A service started with `StandardOutput=append:<file>` is invisible until its file is added to
+`local.file_match "service_files"` in `config.alloy` with a `service` label equal to its unit name (without
+`.service`). The agent finds a unit's logs by that name. Then run `ops/deploy/logs-agent/deploy.sh <node>`.
+Such services are better switched to the journal: `journalctl` keeps them with the rest and
+nothing needs listing. That change needs sudo on the node.
+
+**Not collected:** application logs inside containers that write to files rather than stdout, and the
+logs of the four nodes' desktop sessions.
 
 ### SOC (Phase 6)
 Real `sshd`/`sudo` telemetry from all four nodes; rules for brute force, password spraying, login
@@ -341,11 +397,11 @@ Status on 2026-11-17. The phase scopes below are as this repository uses them; s
 | 0 | Inventory and network | Hardware, network and workload inventory (`docs/architecture.md`); SSH from Node-2 to all four nodes; port matrix (`docs/architecture.md`) | Wired Ethernet decision for Node-3/Node-4; network segmentation not done |
 | 1 | Platform foundation | FastAPI + LangGraph platform on Node-2, React console, users and roles, SQLite store, systemd units, policy engine, restricted executor, independent verification, first vertical slice | PostgreSQL migration deferred by ADR 0003; secret store and rotation not done |
 | 2 | Model gateway and LLMOps | OpenAI-compatible gateway with discovery, breaker, failover across Node-2 and Node-3, API keys, per-key rate limits; failover evaluations 8/8 and 3/3; request log, GPU energy, quality evaluations, model registry | Second replica of the primary model |
-| 3 | Observability | Exporter, own Prometheus, Grafana and Loki on Node-3 (8 rules, 3 dashboards, logs from all nodes), GPU Xid detection on all four nodes, service monitoring, 7/30-day history in the console | Node-4 containers invisible until `sudo usermod -aG docker tmc` on Node-4; no Alertmanager |
+| 3 | Observability | Exporter, own Prometheus, Grafana and Loki on Node-3 (8 rules, 3 dashboards, logs from all nodes), GPU Xid detection on all four nodes, service monitoring with crash-loop detection, disk I/O, NIC errors, link state and Wi-Fi on every node, agent and runbook-retrieval measurement, 7/30-day history in the console | No Alertmanager; units logging to files must be listed in the collector |
 | 4 | SRE agent | Detector rules incl. sustained CPU, GPU stall, latency, reboot; runbook RAG; self-recovery with approval expiry; GPU hang replay 5/5 | Time-to-fix measured for the AI-assisted arm only (median 92 s over 12 runs), manual arm not yet run; labelled scenarios for the remaining incident kinds |
 | 5 | Controlled remediation | Versioned test service with four operations, parameter allowlist, deployment history and rollback; SRE drill 16/16 hard, 16/16 quality | Level 3 stays limited to the test service by design |
 | 6 | SOC | Auth telemetry, 7 rules, ATT&CK catalogue, offline CVE relevance, lab with 6 scenarios and 4 lab-only responses; SOC lab 28/28 hard, 25-26/26 quality | Wazuh/SIEM integration (needs sudo on the nodes and an install decision); precision/recall measured only on 7 lab scenarios |
-| 7 | Security testing and governance | Prompt-injection tests and live evaluation (20/20); authorisation-bypass tests; hash-chained audit; nightly backups with restore test; rate limits; data files mode 600; 317 tests | Network segmentation and secret rotation; TLS declined by decision; Prometheus read API open on the LAN |
+| 7 | Security testing and governance | Prompt-injection tests and live evaluation (20/20); authorisation-bypass tests; hash-chained audit; nightly backups with restore test; rate limits; data files mode 600; 333 tests | Network segmentation and secret rotation; TLS declined by decision; Prometheus read API open on the LAN |
 
 
 ## Deployment
