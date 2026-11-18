@@ -14,7 +14,7 @@ const PAGES = ['/', '/incidents', '/approvals', '/security', '/fleet', '/service
   '/governance?tab=audit', '/governance?tab=policies', '/users', '/account']
 // detail pages are reached through the UI, so the links themselves are tested too
 const DETAIL = [['/incidents?scope=all&origin=all', 'a.row-link[href^="/incidents/INC-"]'], ['/models', 'a[href^="/models/"]'],
-  ['/fleet', 'a[href^="/fleet/Node-"]'], ['/governance?tab=agent', '/governance?tab=deployments', 'a.row-link[href^="/agent/INC-"]']]
+  ['/fleet', 'a[href^="/fleet/Node-"]'], ['/governance?tab=agent', 'a.row-link[href^="/agent/INC-"]']]
 
 const browser = await chromium.launch()
 const failures = []
