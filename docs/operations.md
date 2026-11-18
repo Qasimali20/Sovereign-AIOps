@@ -382,6 +382,12 @@ changes; (4) applies it to those nodes only; (5) closes the record as succeeded 
 `--accept-drift` accepts that drift as the new baseline with the deployment id as the reason. Deployments are
 listed under Governance → Deployments. CI (GitHub Actions) only tests and builds; it never deploys.
 
+**Private image registry: deferred (decision 2026-11-18).** Only the test service's image is built here, and it
+is built on the node that runs it. A registry served over plain HTTP would need each node's Docker daemon
+configured to allow it (sudo, and a Docker restart that stops every container on the node, including other
+teams'). When a second image has to be shared between nodes, the planned approach is HTTPS on Node-3 with the
+platform's own certificate installed per node under `/etc/docker/certs.d/`, which needs no Docker restart.
+
 ### Log strategy
 One pipeline, one store, one place to search: every node runs the same collector (Grafana Alloy,
 `ops/deploy/logs-agent`), which ships to Loki on Node-3. The console, the investigation agent and Grafana all
