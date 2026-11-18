@@ -299,6 +299,19 @@ All under **Models** (tabs) and **Governance → Agent runs** in the console:
   within 14 days raises `capacity_disk_forecast`. Models: requests per day, the weekly trend (needs 5 days), and
   peak requests in flight and KV use over 7 days.
 
+### Dependencies, early warnings and placement
+- **Dependency graph** (`backend/monitoring/topology.py`, Dependencies page): nodes, model servers, models
+  (replicas), gateway routes in fallback order, the platform's components and other teams' container stacks,
+  built from live state. Impact analysis forces one vertex down and reports what becomes degraded or down
+  relative to what is already broken. Investigations of node and model incidents include it (`get_impact`).
+- **Early warnings** (`backend/monitoring/trends.py`, hourly, Capacity page): memory floor rising with no model
+  change (leak), GPU idle temperature up 8 °C on its previous week (cooling), Wi-Fi 6 dB weaker than the previous
+  week, GPU driver errors or restarts of the same unit on 3+ days of a week. Each opens a `trend_*` incident; rules
+  report "waiting" until they have the history they need.
+- **Placement** (`backend/llmops/placement.py`, Capacity page): routes and components that depend on a single
+  server, with the best node for a replica; nodes too full to restart their own servers; and a ranking of nodes
+  for a server of a given size (fits with margin, not beside its own replica, least busy GPU). Advice only.
+
 ### Security testing: prompt injection (Phase 7)
 See Prompt-injection assessment in `docs/architecture.md`. Deterministic tests with a hijacked fake model
 (`tests/test_injection.py`) plus a live evaluation of 5 attacks planted in container logs
