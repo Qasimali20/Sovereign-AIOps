@@ -18,6 +18,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from backend.core import config, store
+from backend.monitoring import topology
 from backend.incidents import knowledge, policy, tools
 from backend.incidents.executor import ExecutionRefused, execute
 from backend.security.attack import TECHNIQUES
@@ -288,6 +289,9 @@ def collect_evidence(state: State) -> State:
         plan = [("get_node_metrics", node), ("get_metric_window", node), ("get_model_servers", node),
                 ("get_node_logs", node)]
 
+    vertex = topology.for_incident(kind, node, str(res))
+    if vertex and vertex.startswith(("node:", "server:")):        # blast radius: what this failure takes with it
+        plan.append(("get_impact", vertex.split(":", 1)[1]))
     evidence = [_record(state, {"tool": "alert", "source": "detector", "retrieved_at": inc["created"],
                                 "data": {"kind": kind, "title": inc["title"], "detail": inc["detail"]}})]
     errors = state.get("errors") or []
@@ -328,7 +332,8 @@ def diagnosis_prompt(incident: dict, evidence: list[dict], runbooks: dict | None
                 "ip": "an IP address", "user": "a user name", "lab": "LAB",
                 "node_or_lab": "node name or LAB",
                 "node_service": "'Node-n:service', a systemd unit or container on that node",
-                "node_port": "'Node-n:port', a model server port on that node"}[kind]
+                "node_port": "'Node-n:port', a model server port on that node",
+                "node_or_server": "'Node-n' or 'Node-n/<model>@<port>'"}[kind]
     menu = "\n".join(f"- {t} (target: {target(k)})" for t, (k, _) in tools.READONLY_TOOLS.items())
     return (f"Incident {incident['id']}: {incident['title']} (kind={incident['kind']}, node={incident['node']}, "
             f"resource={incident['resource']}).\n\nRead-only tools you may request:\n{menu}\n\n"

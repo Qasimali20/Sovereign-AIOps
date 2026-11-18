@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.core import config, store
 from backend.incidents import detector, graph
-from backend.monitoring import drift, events, services
+from backend.monitoring import drift, events, services, trends
 from backend.llmops import capacity, model_evals, model_registry, perf
 from backend.security import events as sec_events, rules as sec_rules
 
@@ -25,7 +25,8 @@ METRIC_KINDS = ("high_memory", "disk_usage", "gpu_temperature", "high_cpu", "gpu
 # that sample was read. disk_error and net_nic_reset come from kernel messages and are closed by a person.
 IO_KINDS = ("disk_io_saturated", "net_errors", "net_link_down", "net_wifi_degraded")
 CAPACITY_CHECK_S = 3600
-RECOVERABLE = METRIC_KINDS + IO_KINDS + ("config_drift", "model_perf_regression", "capacity_disk_forecast", "node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
+RECOVERABLE = METRIC_KINDS + IO_KINDS + ("config_drift", "model_perf_regression", "capacity_disk_forecast",
+               "trend_memory_creep", "trend_gpu_idle_warmer", "trend_wifi_weakening", "trend_xid_recurring", "trend_restart_recurring", "node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
                "svc_container_stopped", "svc_container_unhealthy", "svc_container_restarting",
                "svc_unit_failed", "svc_unit_restarting")
 _BUSY = ("executing", "verifying")     # an action owns these; a pending approval expires if the problem clears
@@ -54,8 +55,8 @@ def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dic
             kind, f"{res} on {node} no longer saturated")
     if kind == "model_perf_regression":        # raised from the newest benchmarks: cleared by a newer, normal one
         return f"latest benchmarks of {res} are back to the usual level"
-    if kind == "capacity_disk_forecast":       # recomputed hourly; absent only from a successful computation
-        return "disk forecast back beyond the warning horizon" if (drifted or {}).get("_capacity_ok") else None
+    if kind == "capacity_disk_forecast" or kind.startswith("trend_"):   # recomputed hourly; absent only from a good run
+        return "no longer projected or recurring" if (drifted or {}).get("_capacity_ok") else None
     if kind == "quality_regression":           # raised from the newest evaluation: cleared by a newer, normal one
         return f"latest evaluation of {res} is back to its usual level"
     if kind in METRIC_KINDS:
@@ -105,6 +106,7 @@ class Runtime:
         self.drift_changes: dict[str, list[dict] | None] = {}   # node -> differences from its baseline (None: unread)
         self._drift_at = 0.0
         self.capacity_report: dict | None = None
+        self.trends_report: dict | None = None
         self.capacity_ok = False
         self._capacity_at = 0.0
 
@@ -291,11 +293,13 @@ class Runtime:
         if time.time() - self._capacity_at >= CAPACITY_CHECK_S:
             self._capacity_at = time.time()
             try:
-                self.capacity_report, self.capacity_ok = capacity.report(), True
+                self.capacity_report, self.trends_report, self.capacity_ok = capacity.report(), trends.report(), True
             except Exception as e:                 # Prometheus unreachable: keep open forecasts open
                 self.capacity_ok = False
                 store.audit(None, "capacity", "error", {"error": repr(e)[:300]})
-        return capacity.alerts(self.capacity_report) if self.capacity_ok and self.capacity_report else []
+        if not (self.capacity_ok and self.capacity_report):
+            return []
+        return capacity.alerts(self.capacity_report) + trends.alerts(self.trends_report)
 
     def _vuln_alerts(self) -> list:
         """Re-scan every VULN_SCAN_S (or when the lab inventory changes); alert on every vulnerable verdict."""

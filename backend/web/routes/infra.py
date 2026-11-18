@@ -203,3 +203,58 @@ def finish_deployment(did: str, body: DeploymentFinish, user: Approver):
     if not store.finish_deployment(did, body.ok, result, f"human:{user['username']}"):
         raise HTTPException(409, "deployment already finished")
     return {"id": did, "status": "succeeded" if body.ok else "failed", "drift": drift}
+
+
+# ---------------------------------------------------------------- dependency graph, trends, placement
+def _graph():
+    from backend.monitoring import metrics, topology
+    return topology.build(metrics.fleet_raw(), runtime.services)
+
+
+@router.get("/topology")
+def topology_view(user: Viewer):
+    from backend.monitoring import topology
+    return topology.view(_graph())
+
+
+@router.get("/topology/impact")
+def topology_impact(user: Viewer, target: str):
+    from backend.monitoring import topology
+    g = _graph()
+    if target not in g:
+        raise HTTPException(404, f"unknown vertex {target!r}")
+    return {"target": target, "affected": topology.impact(g, target)}
+
+
+@router.get("/trends")
+def trends_view(user: Viewer):
+    from backend.monitoring import trends
+    rep = runtime.trends_report
+    if not rep or time.time() - rep["generated"] > 3600:
+        try:
+            rep = runtime.trends_report = trends.report()
+        except Exception as e:
+            if not rep:
+                raise HTTPException(502, f"prometheus: {e}") from e
+    return rep
+
+
+@router.get("/placement")
+def placement_view(user: Viewer, gb: float | None = None, model: str | None = None):
+    """Fleet advice, and with `gb` the nodes ranked for a new server needing that much memory."""
+    from backend.llmops import capacity, placement
+    cap = runtime.capacity_report
+    if not cap or time.time() - cap["generated"] > 600:
+        cap = runtime.capacity_report = capacity.report()
+    g, loads = _graph(), placement.load()
+    out = {"advice": placement.advice(cap, g, loads)}
+    if gb is not None:
+        if not 0 < gb <= 130:
+            raise HTTPException(422, "gb must be between 0 and 130")
+        hosts: dict[str, set[str]] = {}
+        for v in g.values():
+            if v.type == "server":
+                hosts.setdefault(v.node, set()).add(v.id.split("/", 1)[1].rsplit("@", 1)[0])
+        nodes = {n: {"free_gb": (r.get("memory") or {}).get("free_gb"), **loads.get(n, {})} for n, r in cap["nodes"].items()}
+        out["ranking"] = placement.rank(gb, nodes, hosts, model)
+    return out

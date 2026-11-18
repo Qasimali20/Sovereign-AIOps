@@ -274,6 +274,18 @@ def get_config_drift(node: str) -> dict:
                                                          "changes": drift.compare(base["items"], snap["items"])})
 
 
+def get_impact(target: str) -> dict:
+    """What else is down or degraded if this node or model server fails (dependency graph: routes, failover replicas,
+    platform components, other teams' stacks). Target 'Node-n' or 'Node-n/<model>@<port>'."""
+    from backend.monitoring import metrics, topology
+    from backend.incidents.runtime import runtime
+    vid = f"node:{target}" if target in NODE_BY_NAME else f"server:{target}"
+    g = topology.build(metrics.fleet_raw(), runtime.services)
+    if vid not in g:
+        raise ToolError(f"{target!r} is not a node or a model server in the graph")
+    return _result("get_impact", "topology", {"target": target, "affected": topology.impact(g, vid)})
+
+
 # ---------------------------------------------------------------- logs (Loki)
 def _log_result(tool: str, node: str, incident: dict | None, **kw) -> dict:
     from backend.monitoring import logs
@@ -394,6 +406,7 @@ READONLY_TOOLS = {
     "get_node_history": ("node", get_node_history),
     "get_disk_and_network": ("node", get_disk_and_network),
     "get_config_drift": ("node", get_config_drift),
+    "get_impact": ("node_or_server", get_impact),
     "check_endpoint_health": ("resource", check_endpoint_health),
     "inspect_container": ("resource", inspect_container),
     "get_container_logs": ("resource", get_container_logs),
@@ -422,6 +435,8 @@ def run_readonly(tool: str, target: str, incident: dict | None = None) -> dict:
         ok = {"ip": st.valid_ip, "user": st.valid_user, "lab": lambda v: v == "LAB"}[kind](target)
         if not ok:
             raise ToolError(f"{target!r} is not a valid {kind} target")
+    if kind == "node_or_server" and target.partition("/")[0] not in NODE_BY_NAME:
+        raise ToolError(f"{target!r} is not 'Node-n' or 'Node-n/<model>@<port>'")
     if kind in ("node_service", "node_port") and target.partition(":")[0] not in NODE_BY_NAME:
         raise ToolError(f"{target!r} is not 'Node-n:service'")
     return fn(target, incident) if tool in LOG_TOOLS else fn(target)
