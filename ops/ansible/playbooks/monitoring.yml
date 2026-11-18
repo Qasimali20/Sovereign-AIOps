@@ -1,0 +1,64 @@
+# Prometheus, Grafana and Loki on Node-3. Replaces ops/deploy/monitoring/deploy.sh: dashboards are regenerated on
+# the controller, the platform's address is filled in, and only what changed is restarted.
+#   uv run --group ops ansible-playbook playbooks/monitoring.yml --check --diff
+- name: Build dashboards on the controller
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Regenerate dashboard JSON
+      ansible.builtin.command: python3 build_dashboards.py
+      args: {chdir: "{{ repo_root }}/ops/deploy/monitoring"}
+      changed_when: false
+      check_mode: false
+
+- name: Monitoring stack
+  hosts: observability
+  gather_facts: false
+  vars:
+    src: "{{ repo_root }}/ops/deploy/monitoring"
+    dest: /home/tmc/aiops-monitoring
+  tasks:
+    - name: Files to deploy
+      ansible.builtin.find:
+        paths: "{{ src }}"
+        recurse: true
+        hidden: true
+        excludes: [build_dashboards.py, deploy.sh]
+      delegate_to: localhost
+      register: files
+
+    - name: Directories
+      ansible.builtin.file: {path: "{{ dest }}/{{ item }}", state: directory}
+      loop: "{{ files.files | map(attribute='path') | map('dirname') | map('regex_replace', '^' ~ src ~ '/?', '') | select | unique | list }}"
+
+    - name: Files (platform address filled in)
+      ansible.builtin.copy:
+        dest: "{{ dest }}/{{ item.path | regex_replace('^' ~ src ~ '/', '') }}"
+        content: "{{ lookup('ansible.builtin.file', item.path, rstrip=False) | replace('NODE2_ADDR', platform_ip) }}"
+        mode: "{{ '0600' if item.path.endswith('.env') else item.mode }}"
+      loop: "{{ files.files }}"
+      loop_control: {label: "{{ item.path | regex_replace('^' ~ src ~ '/', '') }}"}
+      no_log: "{{ item.path.endswith('.env') }}"
+      register: copied
+
+    - name: What changed
+      ansible.builtin.set_fact:
+        changed_files: "{{ copied.results | selectattr('changed') | map(attribute='item.path') | map('regex_replace', '^' ~ src ~ '/', '') | list }}"
+
+    - name: Containers (compose file or credentials changed, or a container is missing)
+      ansible.builtin.command: {chdir: "{{ dest }}", cmd: docker compose up -d}
+      when: changed_files | select('match', '^(docker-compose.yml|\.env|loki/)') | list | length > 0
+      changed_when: true
+
+    - name: Reload Prometheus (rules or scrape configuration changed)
+      ansible.builtin.command: docker kill -s HUP aiops-prometheus
+      when: changed_files | select('match', '^prometheus/') | list | length > 0
+      changed_when: true
+
+    - name: Stack status
+      ansible.builtin.command: docker compose ps --format '{{ "{{" }}.Name{{ "}}" }} {{ "{{" }}.Status{{ "}}" }}'
+      args: {chdir: "{{ dest }}"}
+      register: ps
+      changed_when: false
+      failed_when: ps.stdout_lines | reject('search', ' Up ') | list | length > 0
+      when: not ansible_check_mode

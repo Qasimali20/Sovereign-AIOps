@@ -1,0 +1,35 @@
+# Read-only fleet report: OS, kernel, NVIDIA driver, Docker, CUDA, memory and disk per node, and which of them
+# differ between nodes. Changes nothing; no sudo.
+#   uv run --group ops ansible-playbook playbooks/facts.yml
+- name: Fleet facts
+  hosts: fleet
+  gather_facts: true
+  tasks:
+    - name: Read versions
+      ansible.builtin.shell: |
+        echo "driver=$(grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' /proc/driver/nvidia/version | head -1)"
+        echo "docker=$(docker version --format '{{ '{{' }}.Server.Version{{ '}}' }}' 2>/dev/null)"
+        echo "cuda=$(readlink -f /usr/local/cuda | sed 's|.*/cuda-||')"
+      register: v
+      changed_when: false
+
+    - name: Record
+      ansible.builtin.set_fact:
+        report: "{{ dict(v.stdout_lines | map('split', '=', 1)) | combine({
+          'os': ansible_facts.distribution ~ ' ' ~ ansible_facts.distribution_version,
+          'kernel': ansible_facts.kernel,
+          'memory_gb': (ansible_facts.memtotal_mb / 1024) | round(0) | int,
+          'root_free_gb': ((ansible_facts.mounts | selectattr('mount', 'equalto', '/') | first).size_available / 1e9) | round(0) | int }) }}"
+
+- name: Compare
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Fleet report
+      ansible.builtin.debug:
+        msg: "{% for h in groups.fleet %}{{ h }}: {{ hostvars[h].report }}\n{% endfor %}"
+    - name: Items that differ between nodes
+      vars:
+        keys: [os, kernel, driver, docker, cuda]
+      ansible.builtin.debug:
+        msg: "{% for k in keys %}{% set vals = groups.fleet | map('extract', hostvars) | map(attribute='report') | map(attribute=k) | list %}{% if vals | unique | length > 1 %}{{ k }}: {% for h in groups.fleet %}{{ h }}={{ hostvars[h].report[k] }} {% endfor %}\n{% endif %}{% endfor %}"

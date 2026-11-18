@@ -1,0 +1,70 @@
+# Upgrade the platform (console, API, gateway) on Node-2 to the commit checked out in the repository.
+# Gate: a clean working tree and a passing test suite. Then dependencies, console build, restart of the user
+# services, and a health check. No sudo. Run it through ops/scripts/deploy.py, which previews, opens a maintenance
+# window and records the deployment.
+- name: Platform
+  hosts: platform
+  gather_facts: false
+  vars:
+    root: "{{ repo_root }}"
+  tasks:
+    - name: Working tree is clean (what is deployed is a commit; edits to Markdown files do not count)
+      ansible.builtin.command: git -C {{ root }} status --porcelain --untracked-files=no
+      register: dirty
+      changed_when: false
+      check_mode: false
+      failed_when: dirty.stdout_lines | reject('match', '^.. .*\.md$') | list | length > 0
+
+    - name: Commit being deployed
+      ansible.builtin.command: git -C {{ root }} rev-parse --short HEAD
+      register: commit
+      changed_when: false
+      check_mode: false
+
+    - name: Commit currently running
+      ansible.builtin.slurp: {src: "{{ root }}/data/deployed_commit"}
+      register: running
+      failed_when: false
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: "deploying {{ commit.stdout }} (running: {{ (running.content | default('') | b64decode | trim) or 'unknown' }})"
+
+    - name: Backend dependencies
+      ansible.builtin.command: {chdir: "{{ root }}", cmd: uv sync --frozen}
+      register: sync
+      changed_when: "'Installed' in sync.stderr or 'Uninstalled' in sync.stderr"
+
+    - name: Tests pass
+      ansible.builtin.command: {chdir: "{{ root }}", cmd: uv run pytest tests -q -x -p no:cacheprovider}
+      changed_when: false
+      when: not ansible_check_mode
+
+    - name: Console build
+      ansible.builtin.shell: {chdir: "{{ root }}/frontend", cmd: npm ci --silent && npm run build}
+      changed_when: true
+      when: not ansible_check_mode
+
+    - name: Restart the platform services
+      ansible.builtin.systemd_service: {name: "{{ item }}", state: restarted, scope: user}
+      loop: [aiops-gateway.service, aiops.service]
+      when: not ansible_check_mode
+
+    - name: Console answering
+      ansible.builtin.uri: {url: "http://127.0.0.1:5170/api/me", status_code: [200, 401]}
+      register: api
+      until: api.status in [200, 401]
+      retries: 30
+      delay: 3
+      when: not ansible_check_mode
+
+    - name: Gateway answering
+      ansible.builtin.uri: {url: "http://127.0.0.1:8790/v1/models", status_code: [200, 401]}
+      register: gw
+      until: gw.status in [200, 401]
+      retries: 30
+      delay: 3
+      when: not ansible_check_mode
+
+    - name: Record the running commit
+      ansible.builtin.copy: {dest: "{{ root }}/data/deployed_commit", content: "{{ commit.stdout }}\n", mode: "0600"}

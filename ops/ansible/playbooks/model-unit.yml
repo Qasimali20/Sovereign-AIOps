@@ -1,0 +1,50 @@
+# Change one flag of a model server's systemd unit, restart it and wait until it answers again. This is how a
+# change like "lower vllm-tts's memory share to 0.15" is made repeatably instead of by hand.
+# Needs sudo on the node (system unit): pass --ask-become-pass, or run it as someone who has sudo.
+#   uv run --group ops ansible-playbook playbooks/model-unit.yml --limit Node-4 --check --diff \
+#     -e unit=vllm-tts -e flag=--gpu-memory-utilization -e value=0.15 -e port=8091
+- name: Model server setting
+  hosts: fleet
+  gather_facts: false
+  become: true
+  vars:
+    path: "/etc/systemd/system/{{ unit }}.service"
+  tasks:
+    - name: Arguments
+      ansible.builtin.assert:
+        that:
+          - unit is defined and unit is match('^[A-Za-z0-9_.@-]+$')
+          - flag is defined and flag is match('^--[a-z0-9-]+$')
+          - value is defined and value | string is match('^[A-Za-z0-9_.:/-]+$')
+          - port is defined and port | int > 0
+          - ansible_play_hosts_all | length == 1
+        fail_msg: "pass -e unit=<name> -e flag=--<flag> -e value=<value> -e port=<port>, and --limit the node"
+
+    - name: The unit sets the flag exactly once
+      ansible.builtin.command: grep -c -- '{{ flag }}[ =]' {{ path }}
+      register: count
+      become: false                                 # unit files are world-readable
+      changed_when: false
+      check_mode: false
+      failed_when: count.stdout != '1'
+
+    - name: Set the flag
+      ansible.builtin.replace:
+        path: "{{ path }}"
+        regexp: '({{ flag | regex_escape }}[ =])\S+'
+        replace: '\g<1>{{ value }}'
+        backup: true
+      register: edited
+
+    - name: Reload systemd and restart the unit
+      ansible.builtin.systemd_service: {name: "{{ unit }}", state: restarted, daemon_reload: true}
+      when: edited.changed and not ansible_check_mode
+
+    - name: Model server answering again (loading can take several minutes)
+      ansible.builtin.uri: {url: "http://127.0.0.1:{{ port }}/v1/models", status_code: 200}
+      register: up
+      until: up.status == 200
+      retries: 90
+      delay: 10
+      become: false
+      when: edited.changed and not ansible_check_mode

@@ -1,0 +1,62 @@
+# Log collector (Grafana Alloy) on every node, shipping to Loki on Node-3. Replaces ops/deploy/logs-agent/deploy.sh.
+# No sudo: the tmc account runs Docker. Preview first:
+#   uv run --group ops ansible-playbook playbooks/log-agent.yml --check --diff [--limit Node-4]
+- name: Log collector
+  hosts: fleet
+  gather_facts: false
+  vars:
+    src: "{{ repo_root }}/ops/deploy/logs-agent"
+    dest: /home/tmc/aiops-logs
+    push_password: "{{ lookup('ansible.builtin.file', repo_root ~ '/ops/deploy/monitoring/.env')
+                       | regex_search('LOKI_PUSH_PASSWORD=(.*)', '\\1') | first }}"
+  tasks:
+    - name: Directory
+      ansible.builtin.file: {path: "{{ dest }}", state: directory}
+
+    - name: Settings (node name, Loki address, push credential)
+      ansible.builtin.copy:
+        dest: "{{ dest }}/.env"
+        mode: "0600"
+        content: "NODE_NAME={{ node_name }}\nLOKI_HOST={{ loki_host }}\nLOKI_PUSH_PASSWORD={{ push_password }}\n"
+      no_log: true
+      notify: Recreate collector
+
+    - name: Configuration and compose files
+      ansible.builtin.copy: {src: "{{ src }}/{{ item }}", dest: "{{ dest }}/{{ item }}", mode: "0644"}
+      loop: [config.alloy, docker-compose.yml, docker-compose.files.yml]
+      notify: Recreate collector
+
+    - name: Does the node have unit log files (~/Desktop/logs)
+      ansible.builtin.stat: {path: /home/tmc/Desktop/logs}
+      register: file_logs
+
+    - name: Collector running
+      ansible.builtin.command: docker ps --filter name=aiops-log-agent --format '{{ "{{" }}.Status{{ "}}" }}'
+      register: running
+      changed_when: false
+      check_mode: false
+
+    - name: Start if missing
+      ansible.builtin.debug: {msg: "collector not running: will start"}
+      when: running.stdout == ""
+      changed_when: true
+      notify: Recreate collector
+
+  handlers:
+    - name: Recreate collector
+      ansible.builtin.command:
+        chdir: "{{ dest }}"
+        cmd: >-
+          docker compose -f docker-compose.yml
+          {{ '-f docker-compose.files.yml' if file_logs.stat.exists else '' }}
+          up -d --force-recreate
+      register: up
+      changed_when: true
+
+  post_tasks:
+    - name: Collector up
+      ansible.builtin.command: docker ps --filter name=aiops-log-agent --format '{{ "{{" }}.Status{{ "}}" }}'
+      register: status
+      changed_when: false
+      failed_when: not status.stdout.startswith('Up')
+      when: not ansible_check_mode
