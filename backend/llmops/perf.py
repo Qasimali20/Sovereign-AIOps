@@ -40,6 +40,7 @@ DECODE_DROP = 0.25
 TTFT_RISE = 0.5
 TTFT_MIN_S = 0.15
 KINDS = ("LLM", "VLM")
+EXCLUDED = {("Node-3", "qwen-chat")}      # another team's stack on Node-3: observed, never loaded
 SCENARIOS = {"short": (40, 128), "long_prompt": (1500, 16)}       # (approximate prompt words, output tokens)
 
 SCHEMA = """
@@ -131,7 +132,9 @@ def targets(fleet: dict[str, dict | None]) -> list[dict]:
             if s.get("kind") not in KINDS or s.get("engine", "vllm") not in ("vllm", "sglang") or not s.get("port"):
                 continue
             why = None
-            if s.get("status") != "ready":
+            if (n.name, s["name"]) in EXCLUDED:
+                why = "another team's server: not benchmarked"
+            elif s.get("status") != "ready":
                 why = f"not ready ({s.get('status')})"
             elif (gpu.get("temp") or 0) >= MAX_TEMP_C:
                 why = f"GPU at {gpu['temp']:.0f} C (limit {MAX_TEMP_C:.0f} C)"
