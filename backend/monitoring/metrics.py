@@ -126,6 +126,12 @@ def render(fleet: dict[str, dict | None], services: dict[str, dict], pipeline: d
     if detector.get("audit_ok") is not None:
         o.metric("aiops_audit_chain_ok", g, "Audit hash chain verified intact (1) or broken (0).", 1 if detector["audit_ok"] else 0)
         o.metric("aiops_audit_events", g, "Audit events in the verified chain.", detector.get("audit_events"))
+    ix = detector.get("rag_index")
+    if ix:
+        o.metric("aiops_rag_sections", g, "Runbook sections the agent can retrieve, by state.", ix["embedded"], state="embedded")
+        o.metric("aiops_rag_sections", g, "Runbook sections the agent can retrieve, by state.", ix["searchable"] - ix["embedded"], state="not_embedded")
+        o.metric("aiops_rag_embedding_ok", g, "The embedding model answered the runbook index (1) or retrieval falls back to keywords (0).",
+                 1 if ix["embedding_ok"] else 0)
     o.metric("aiops_detector_scan_error", g, "The last detector scan raised an error (1) or not (0).", 1 if detector.get("error") else 0)
     return "\n".join(o.lines) + "\n"
 

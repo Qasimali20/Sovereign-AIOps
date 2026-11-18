@@ -132,13 +132,24 @@ def _refresh() -> None:
     _state.update(sig=sig, chunks=chunks, vectors=vectors)
 
 
+def index_status() -> dict:
+    """Runbook index health: sections on disk, how many are embedded, and whether the embedding model answered."""
+    with _lock:
+        _refresh()
+        chunks, vectors = _state["chunks"], _state["vectors"]
+    pool = [c for c in chunks if not c.always]
+    return {"documents": len({c.id.split("#")[0] for c in chunks}), "sections": len(chunks),
+            "always_on": len(chunks) - len(pool), "embedded": sum(c.key in vectors for c in pool), "searchable": len(pool),
+            "embedding_ok": time.time() - _state["fail_at"] >= RETRY_S}
+
+
 def retrieve(query: str, k: int = 4, candidates: int = 10) -> dict:
     """Relevant runbook sections for `query`: always-on platform facts plus the top-k by relevance."""
     with _lock:
         _refresh()
         chunks, vectors = _state["chunks"], _state["vectors"]
     pool = [c for c in chunks if not c.always]
-    method = "dense+rerank"
+    method, reason = "dense+rerank", None
     try:
         if any(c.key not in vectors for c in pool) or time.time() - _state["fail_at"] < RETRY_S:
             raise RuntimeError("embedding model unavailable or index incomplete")
@@ -146,16 +157,16 @@ def retrieve(query: str, k: int = 4, candidates: int = 10) -> dict:
         top = sorted(pool, key=lambda c: _cos(qv, vectors[c.key]), reverse=True)[:candidates]
         try:
             scores = _rerank(query, [f"{c.title}\n{c.text}" for c in top])
-        except Exception:
-            method = "dense"
+        except Exception as e:
+            method, reason = "dense", f"rerank unavailable: {str(e)[:160]}"
             scores = [_cos(qv, vectors[c.key]) for c in top]
         ranked = sorted(zip(top, scores), key=lambda t: t[1], reverse=True)[:k]
-    except Exception:
-        method = "keyword"
+    except Exception as e:
+        method, reason = "keyword", str(e)[:200]
         ranked = sorted(((c, keyword_score(query, f"{c.title} {c.text}")) for c in pool),
                         key=lambda t: t[1], reverse=True)[:k]
     picked = [(c, None) for c in chunks if c.always] + ranked
-    return {"query": query, "method": method,
+    return {"query": query, "method": method, "reason": reason,
             "chunks": [{"id": c.id, "title": c.title, "version": c.version, "always": c.always,
                         "score": None if s is None else round(float(s), 4), "text": c.text} for c, s in picked]}
 

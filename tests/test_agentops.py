@@ -88,3 +88,43 @@ def test_api_lists_runs_and_only_approvers_rate(tmp_path, monkeypatch):
     assert c.post(f"/api/agent/runs/{iid}/feedback", json={"verdict": "maybe"}, headers=H).status_code == 422
     assert c.post(f"/api/agent/runs/{iid}/feedback", json={"verdict": "correct"}, headers=H).status_code == 200
     assert c.get("/api/agent/overview").json()["accuracy"] == 1.0
+
+
+def _rag_run(cited, verdict=None, method="dense+rerank", errors=(), t0=0):
+    chunks = [{"id": "platform#facts", "always": True, "score": None},
+              {"id": "storage-network#link-down", "always": False, "score": 0.91},
+              {"id": "model-serving#queue-stuck", "always": False, "score": 0.42}]
+    diag = {"summary": "s", "hypotheses": [{"cause": "c", "runbook_ids": cited}]}
+    iid = _run([(t0, "collect_evidence", {"tools": [], "count": 0, "errors": list(errors)}),   # t0: one incident each
+                (t0 + 1, "retrieve_runbooks", {"chunks": chunks, "method": method, "latency_s": 0.4}),
+                (t0 + 9, "diagnose", {"diagnosis": diag, "meta": {}})])
+    if verdict:
+        agentops.set_feedback(iid, verdict, "", "human:alice")
+    return iid
+
+
+def test_run_records_what_was_retrieved_and_what_the_diagnosis_used(db):
+    _rag_run(["storage-network#link-down"], errors=["get_service_logs(Node-4:x): no logs"])
+    [r] = agentops.runs()
+    assert r["rag_method"] == "dense+rerank" and r["rag_sections"] == 2 and r["rag_top_score"] == 0.91
+    assert r["rag_cited"] == ["storage-network#link-down"] and r["tool_errors"] == 1
+
+
+def test_rag_overview_compares_accuracy_with_and_without_a_runbook(db, monkeypatch):
+    from backend.incidents import knowledge
+    monkeypatch.setattr(knowledge, "index_status", lambda: {"embedded": 1})
+    _rag_run(["storage-network#link-down"], "correct")
+    _rag_run([], "wrong", t0=100)
+    _rag_run([], None, method="keyword", t0=200)
+    o = agentops.overview(days=30_000)["rag"]          # the steps are recorded at t~1000 s (1970)
+    assert o["retrievals"] == 3 and o["methods"] == {"dense+rerank": 2, "keyword": 1} and abs(o["fallback_share"] - 1 / 3) < 1e-9
+    assert (o["citing"], o["diagnosed"], o["accuracy_citing"], o["accuracy_not_citing"]) == (1, 3, 1.0, 0.0)
+    assert {s["id"]: (s["retrieved"], s["used"]) for s in o["sections"]} == {
+        "storage-network#link-down": (3, 1), "model-serving#queue-stuck": (3, 0)}
+
+
+def test_diagnosis_may_name_only_retrieved_runbooks():
+    from backend.incidents import graph
+    h = graph._diag_schema(["a#x", "b#y"])["properties"]["hypotheses"]["items"]
+    assert "runbook_ids" in h["required"] and h["properties"]["runbook_ids"]["items"]["enum"] == ["a#x", "b#y"]
+    assert graph._diag_schema([])["properties"]["hypotheses"]["items"]["properties"]["runbook_ids"]["maxItems"] == 0

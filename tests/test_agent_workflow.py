@@ -58,7 +58,7 @@ def diagnosis(more=(), cite=True, security=False):
         ids = EV.findall(prompt)[:2] if cite else []
         d = {"summary": "A known-malicious file was written in the lab.",
              "observations": [{"fact": "file written to /var/tmp/.cache", "evidence_ids": ids}],
-             "hypotheses": [{"cause": "malware drop", "confidence": "high", "supporting_evidence_ids": ids, "missing_information": []}],
+             "hypotheses": [{"cause": "malware drop", "confidence": "high", "supporting_evidence_ids": ids, "missing_information": [], "runbook_ids": []}],
              "more_evidence": list(more)}
         if security:
             d |= {"assessment": "malicious", "attack_techniques": []}

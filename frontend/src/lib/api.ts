@@ -30,8 +30,7 @@ export type Proposal = {
 export type Observation = { fact: string; evidence_ids: string[] }
 export type Hypothesis = {
   cause: string; confidence: 'low' | 'medium' | 'high'
-  supporting_evidence_ids: string[]; missing_information: string[]
-}
+  supporting_evidence_ids: string[]; missing_information: string[]; runbook_ids?: string[] }
 export type Report = {
   final_status: string; diagnosis_summary: string | null
   observations: Observation[]; hypotheses: Hypothesis[]
@@ -203,7 +202,15 @@ const q = encodeURIComponent
 // AgentOps: the incident agent's runs (read back from its recorded steps) and human verdicts on its diagnoses
 export type Verdict = 'correct' | 'partly' | 'wrong'
 export type RunSummary = { started: number; ended: number; duration_s: number; steps: number; model_calls: number; model_seconds: number
-  attempts: number; fallbacks: number; prompt_tokens: number; completion_tokens: number; models: string[] }
+  attempts: number; fallbacks: number; prompt_tokens: number; completion_tokens: number; models: string[]
+  tool_errors: number | null; rag_method: string | null; rag_latency_s?: number | null; rag_sections?: number
+  rag_top_score?: number | null; rag_retrieved?: string[]; rag_cited?: string[] | null }
+export type RagOverview = { retrievals: number; methods: Record<string, number>; fallback_share: number | null
+  median_latency_s: number | null; median_top_score: number | null; diagnosed: number; citing: number
+  citation_rate: number | null; accuracy_citing: number | null; accuracy_not_citing: number | null
+  rated_citing: number; rated_not_citing: number; sections: { id: string; retrieved: number; used: number }[]
+  tool_errors: number
+  index: { documents: number; sections: number; always_on: number; embedded: number; searchable: number; embedding_ok: boolean } }
 export type AgentRun = RunSummary & { incident_id: string; title: string; kind: string; node: string; status: string; origin: string
   feedback: Verdict | null }
 export type ModelCall = { endpoint: string | null; model: string | null; request_id: string | null; latency_s: number | null
@@ -212,7 +219,7 @@ export type RunStep = { node: string; label: string; done_at_s: number; duration
 export type RunDetail = { incident: { id: string; title: string; kind: string; node: string; status: string; origin: string }
   summary: RunSummary; steps: RunStep[]; feedback: { verdict: Verdict; note: string; by: string; created: number } | null }
 export type AgentOverview = { days: number; runs: number; median_run_s: number | null; model_calls: number; tokens: number
-  retries: number; fallbacks: number; rated: number; accuracy: number | null; verdicts: Record<Verdict, number> }
+  retries: number; fallbacks: number; rated: number; accuracy: number | null; verdicts: Record<Verdict, number>; rag: RagOverview }
 
 // LLMOps: what the gateway served (metadata only) and the GPU energy attributed to each model
 export type LlmRange = '1h' | '6h' | '24h' | '7d'

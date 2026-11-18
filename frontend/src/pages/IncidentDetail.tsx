@@ -178,6 +178,7 @@ export default function IncidentDetail({ user }: { user: User }) {
                           </div>
                           <span>{h.cause}</span>
                           {h.supporting_evidence_ids.length > 0 && <div className="refs">{h.supporting_evidence_ids.map(r => <Ref key={r} id={r} known={known} onOpen={openEv} />)}</div>}
+                          {(h.runbook_ids?.length ?? 0) > 0 && <div className="muted small">Runbook: {h.runbook_ids!.map(d => <code key={d} className="mono">{d} </code>)}</div>}
                           {h.missing_information.length > 0 && <ul className="missing">{h.missing_information.map(m => <li key={m}>Missing: {m}</li>)}</ul>}
                         </li>
                       ))}

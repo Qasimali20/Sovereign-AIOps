@@ -10,7 +10,10 @@ verdict replaces it), audited, and gives the accuracy figure.
 from __future__ import annotations
 
 import json
+import re
+import statistics
 import time
+from collections import Counter
 from typing import Any, Literal
 
 from backend.core import store
@@ -37,6 +40,32 @@ def _usage(meta: dict) -> tuple[int, int]:
     return p, c
 
 
+_DOC = re.compile(r"doc:([\w.\-]+#[\w\-]+)")      # older diagnoses named runbooks inline as doc:<id>
+
+
+def _rag(steps: list[dict]) -> dict:
+    """What the run retrieved from the runbooks and what its diagnosis actually used."""
+    ret = next((s["data"] for s in reversed(steps) if s["node"] == "retrieve_runbooks"), None)
+    diag = next((s["data"].get("diagnosis") for s in reversed(steps) if s["node"] == "diagnose" and s["data"].get("diagnosis")), None)
+    ev = next((s["data"] for s in steps if s["node"] == "collect_evidence"), {})
+    errs = ev.get("errors")
+    out: dict[str, Any] = {"tool_errors": len(errs) if isinstance(errs, list) else None}
+    if ret is None:
+        return out | {"rag_method": None}
+    chunks = ret.get("chunks") or []
+    retrieved = [c["id"] for c in chunks if c.get("id") and not c.get("always")]
+    scores = [c["score"] for c in chunks if c.get("score") is not None]
+    cited: set[str] = set()
+    if isinstance(diag, dict):
+        for h in diag.get("hypotheses") or []:
+            cited |= set(h.get("runbook_ids") or [])
+        cited |= set(_DOC.findall(json.dumps(diag)))
+    method = ret.get("method") or ""
+    return out | {"rag_method": "failed" if method.startswith("failed") else method, "rag_latency_s": ret.get("latency_s"),
+                  "rag_sections": len(retrieved), "rag_top_score": max(scores) if scores else None,
+                  "rag_retrieved": retrieved, "rag_cited": sorted(cited) if diag is not None else None}
+
+
 def _summarise(steps: list[dict]) -> dict:
     calls = [s["data"].get("meta") or {} for s in steps if s["node"] == "diagnose"]
     prompt = completion = 0
@@ -52,6 +81,7 @@ def _summarise(steps: list[dict]) -> dict:
         "fallbacks": sum(len(m.get("skipped") or []) for m in calls),
         "prompt_tokens": prompt, "completion_tokens": completion,
         "models": sorted({str(m.get("model")) for m in calls if m.get("model")}),
+        **_rag(steps),
     }
 
 
@@ -112,9 +142,15 @@ def run(incident_id: str) -> dict | None:
 def _detail(node: str, d: dict) -> str:
     """One readable line per step (the full record stays on the incident page)."""
     if node == "collect_evidence":
-        return f"{d.get('count', len(d.get('tools') or []))} evidence records: " + ", ".join(sorted({t[0] for t in d.get("tools") or []}))
+        failed = f"; {len(d['errors'])} tool(s) failed" if d.get("errors") else ""
+        return f"{d.get('count', len(d.get('tools') or []))} evidence records: " + ", ".join(sorted({t[0] for t in d.get("tools") or []})) + failed
     if node == "retrieve_runbooks":
-        return f"{len(d.get('chunks') or [])} runbook sections ({d.get('method', '?')})"
+        top = max((c["score"] for c in d.get("chunks") or [] if c.get("score") is not None), default=None)
+        return (f"{len(d.get('chunks') or [])} runbook sections ({d.get('method', '?')}"
+                + (f", top score {top:.2f}" if top is not None else "")
+                + (f", {d['latency_s']:.2f} s" if d.get("latency_s") is not None else "") + ")"
+                + (f"; fallback reason: {d['reason']}" if d.get("reason") else ""))
+
     if node == "gather_more":
         reqs = d.get("requests") or []
         return f"asked for {len(reqs)}, {d.get('new_records', 0)} new: " + ", ".join(r.get("tool", "?") for r in reqs)
@@ -161,4 +197,38 @@ def overview(days: int = 30) -> dict:
         "fallbacks": sum(r["fallbacks"] for r in recent),
         "rated": rated, "accuracy": score,
         "verdicts": {v: fb.count(v) for v in ("correct", "partly", "wrong")},
+        "rag": rag_overview(recent),
+    }
+
+
+def _accuracy(verdicts: list[str]) -> float | None:
+    return (verdicts.count("correct") + 0.5 * verdicts.count("partly")) / len(verdicts) if verdicts else None
+
+
+def rag_overview(recent: list[dict]) -> dict:
+    """Runbook retrieval over the runs: how it ran, whether diagnoses used what it found, and whether runs that used a
+    runbook were rated more accurate than runs that did not (the measure of whether retrieval helps)."""
+    from backend.incidents import knowledge
+    ret = [r for r in recent if r.get("rag_method")]
+    diagnosed = [r for r in ret if r.get("rag_cited") is not None]
+    citing = [r for r in diagnosed if set(r["rag_cited"]) & set(r["rag_retrieved"])]
+    methods = Counter(r["rag_method"] for r in ret)
+    lat = [r["rag_latency_s"] for r in ret if r.get("rag_latency_s") is not None]
+    top = [r["rag_top_score"] for r in ret if r.get("rag_top_score") is not None]
+    used = Counter(i for r in citing for i in set(r["rag_cited"]) & set(r["rag_retrieved"]))
+    retrieved = Counter(i for r in ret for i in r["rag_retrieved"])
+    return {
+        "retrievals": len(ret), "methods": dict(methods),
+        "fallback_share": (len(ret) - methods.get("dense+rerank", 0)) / len(ret) if ret else None,
+        "median_latency_s": statistics.median(lat) if lat else None,
+        "median_top_score": statistics.median(top) if top else None,
+        "diagnosed": len(diagnosed), "citing": len(citing),
+        "citation_rate": len(citing) / len(diagnosed) if diagnosed else None,
+        "accuracy_citing": _accuracy([r["feedback"] for r in citing if r.get("feedback")]),
+        "accuracy_not_citing": _accuracy([r["feedback"] for r in diagnosed if r.get("feedback") and r not in citing]),
+        "rated_citing": sum(1 for r in citing if r.get("feedback")),
+        "rated_not_citing": sum(1 for r in diagnosed if r.get("feedback") and r not in citing),
+        "sections": [{"id": i, "retrieved": n, "used": used.get(i, 0)} for i, n in retrieved.most_common(12)],
+        "tool_errors": sum(r.get("tool_errors") or 0 for r in recent),
+        "index": knowledge.index_status(),
     }

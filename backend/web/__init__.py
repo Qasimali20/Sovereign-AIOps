@@ -51,6 +51,11 @@ def _mount_metrics(app: FastAPI) -> None:
         scraper(request)
         det = runtime.scan_info | {"workflows_running": len(runtime.running), "audit_ok": runtime.audit_check.get("ok"),
                                    "audit_events": runtime.audit_check.get("events")}
+        try:
+            from backend.incidents import knowledge
+            det["rag_index"] = knowledge.index_status()
+        except Exception:
+            pass
         body = metrics.render(metrics.fleet_raw(), dict(runtime.services), analytics.pipeline_counts(), det, runtime.hostio)
         return PlainTextResponse(body, media_type="text/plain; version=0.0.4; charset=utf-8")
 

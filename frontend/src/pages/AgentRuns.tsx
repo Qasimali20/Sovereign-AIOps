@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bot } from 'lucide-react'
-import type { AgentRun } from '../lib/api'
+import type { AgentRun, RagOverview } from '../lib/api'
 import { useAgentOverview, useAgentRuns } from '../lib/queries'
 import { Card, Empty, Page, PageHead, Segmented, Skeleton, StatusBadge } from '../components/ui'
 import { Tile } from '../components/Tile'
@@ -9,6 +9,38 @@ import { ago, dateTime, duration } from '../lib/format'
 import { ORIGIN_LABEL, VERDICT_LABEL } from '../lib/status'
 
 const PAGE = 25
+const pct = (v: number | null) => v == null ? '–' : `${Math.round(v * 100)}%`
+
+/** How runbook retrieval ran, and whether the diagnoses used what it found. */
+function Retrieval({ r }: { r: RagOverview }) {
+  const ix = r.index
+  return (
+    <Card title="Runbook retrieval">
+      <div className="grid g-2">
+        <dl className="kv">
+          <dt>Retrievals</dt><dd>{r.retrievals} <span className="muted small">· {Object.entries(r.methods).map(([m, n]) => `${n} ${m}`).join(', ')}</span></dd>
+          <dt>Fallback share</dt><dd>{pct(r.fallback_share)} <span className="muted small">searched by keyword or failed instead of embedding + reranker</span></dd>
+          <dt>Median time</dt><dd>{r.median_latency_s != null ? `${r.median_latency_s.toFixed(2)} s` : '–'}</dd>
+          <dt>Used by the diagnosis</dt><dd>{r.citing} of {r.diagnosed} <span className="muted small">({pct(r.citation_rate)}) named a retrieved section</span></dd>
+          <dt>Accuracy, used a runbook</dt><dd>{pct(r.accuracy_citing)} <span className="muted small">{r.rated_citing} rated</span></dd>
+          <dt>Accuracy, did not</dt><dd>{pct(r.accuracy_not_citing)} <span className="muted small">{r.rated_not_citing} rated</span></dd>
+          <dt>Evidence tools failed</dt><dd>{r.tool_errors}</dd>
+          <dt>Index</dt><dd>{ix.embedded} of {ix.searchable} sections embedded · {ix.documents} documents
+            {!ix.embedding_ok && <span className="muted small"> · embedding model not answering: keyword search in use</span>}</dd>
+        </dl>
+        <div className="table-wrap">
+          <table className="table">
+            <thead><tr><th>Most retrieved sections</th><th className="num">Retrieved</th><th className="num">Used</th></tr></thead>
+            <tbody>{r.sections.map(s => (
+              <tr key={s.id}><td className="mono small">{s.id}</td><td className="num">{s.retrieved}</td><td className="num">{s.used}</td></tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
 const tokens = (n: number) => n >= 1e6 ? `${(n / 1e6).toFixed(2)} M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)} k` : String(n)
 
 /** AgentOps: every investigation the incident agent ran, newest first, with its model use and the human verdict. */
@@ -39,6 +71,8 @@ export default function AgentRuns({ embedded = false }: { embedded?: boolean }) 
             : 'no diagnosis rated yet: rate one on its run page') : undefined} />
       </div>
 
+      {o?.rag && <Retrieval r={o.rag} />}
+
       <Card title="Runs" right={<Segmented value={show} onChange={k => { setShow(k); setPage(0) }}
         options={[{ key: 'all', label: 'All' }, { key: 'unrated', label: 'Not rated' }, { key: 'rated', label: 'Rated' }]} />}
         bodyClass="card-body tight">
@@ -49,7 +83,7 @@ export default function AgentRuns({ embedded = false }: { embedded?: boolean }) 
             <table className="table click">
               <thead>
                 <tr><th>Incident</th><th>Outcome</th><th className="num">Run time</th><th className="num hide-sm">Model calls</th>
-                  <th className="num hide-sm">Model time</th><th className="num hide-sm">Tokens</th><th>Diagnosis</th><th className="hide-sm">Finished</th></tr>
+                  <th className="num hide-sm">Model time</th><th className="num hide-sm">Tokens</th><th className="num hide-sm" title="retrieved runbook sections the diagnosis named">Runbooks used</th><th>Diagnosis</th><th className="hide-sm">Finished</th></tr>
               </thead>
               <tbody>
                 {shown.map((r: AgentRun) => (
@@ -62,6 +96,8 @@ export default function AgentRuns({ embedded = false }: { embedded?: boolean }) 
                     <td className="num hide-sm">{r.model_calls}{r.attempts > r.model_calls && <span className="muted small"> (+{r.attempts - r.model_calls} retry)</span>}</td>
                     <td className="num nowrap hide-sm">{duration(r.model_seconds)}</td>
                     <td className="num nowrap hide-sm">{tokens(r.prompt_tokens + r.completion_tokens)}</td>
+                    <td className="num nowrap hide-sm">{r.rag_cited == null ? <span className="muted">–</span>
+                      : `${r.rag_cited.filter(i => r.rag_retrieved?.includes(i)).length} of ${r.rag_sections ?? 0}`}</td>
                     <td className="nowrap">{r.feedback ? <span className={`verdict v-${r.feedback}`}>{VERDICT_LABEL[r.feedback]}</span> : <span className="muted">Not rated</span>}</td>
                     <td className="muted nowrap hide-sm" title={dateTime(r.ended)}>{ago(r.ended)}</td>
                   </tr>
