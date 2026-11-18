@@ -86,6 +86,10 @@ KERNEL_LOOKBACK_S = 3600        # on first scan, report GPU driver events from t
 NODE_UNREACHABLE_AFTER = 3      # consecutive failed polls
 CPU_PCT_WARN = 90.0
 SUSTAIN_SCANS = 9               # ~3 min at 20 s: CPU / GPU-stall rules must hold this long (no paging on spikes)
+DISK_BUSY_WARN = 0.95           # NVMe busy (time with I/O in flight) ratio...
+DISK_BUSY_SCANS = 45            # ...held ~15 min: loading a 70 GB model saturates the disk for several minutes
+NET_ERROR_SCANS = 3             # NIC receive/transmit errors rising on this many consecutive scans
+WIFI_SIGNAL_WARN_DBM = -75.0    # averaged Wi-Fi signal at or below this, sustained (every node is on Wi-Fi)
 PROMETHEUS_URL = os.environ.get("AIOPS_PROMETHEUS_URL", f"http://{NODE_BY_NAME['Node-3'].lan_ip}:9090")   # on Node-3
 GRAFANA_URL = os.environ.get("AIOPS_GRAFANA_URL", f"http://{NODE_BY_NAME['Node-3'].lan_ip}:3000")
 # Same Grafana via Node-3's Tailscale address, for users who open the app over Tailscale (100.x).

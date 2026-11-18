@@ -51,7 +51,7 @@ def _mount_metrics(app: FastAPI) -> None:
         scraper(request)
         det = runtime.scan_info | {"workflows_running": len(runtime.running), "audit_ok": runtime.audit_check.get("ok"),
                                    "audit_events": runtime.audit_check.get("events")}
-        body = metrics.render(metrics.fleet_raw(), dict(runtime.services), analytics.pipeline_counts(), det)
+        body = metrics.render(metrics.fleet_raw(), dict(runtime.services), analytics.pipeline_counts(), det, runtime.hostio)
         return PlainTextResponse(body, media_type="text/plain; version=0.0.4; charset=utf-8")
 
     @app.get("/metrics/targets", include_in_schema=False)

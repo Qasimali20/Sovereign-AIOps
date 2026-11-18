@@ -12,7 +12,7 @@ export function categoryOf(kind: string): string {
   if (kind.startsWith('model_')) return 'Models'
   if (kind.startsWith('gpu_')) return 'GPU'
   if (kind.startsWith('svc_') || kind === 'service_unhealthy') return 'Services'
-  if (['node_unreachable', 'node_rebooted', 'high_cpu', 'high_memory', 'disk_usage'].includes(kind)) return 'Nodes'
+  if (['node_unreachable', 'node_rebooted', 'high_cpu', 'high_memory'].includes(kind) || /^(disk|net)_/.test(kind)) return 'Nodes'
   return 'Other'
 }
 

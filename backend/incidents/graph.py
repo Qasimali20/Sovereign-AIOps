@@ -252,6 +252,11 @@ def collect_evidence(state: State) -> State:
     elif kind.startswith("svc_"):
         plan = [("get_services", node), ("get_node_metrics", node), ("get_gpu_kernel_events", node),
                 ("get_metric_window", node), ("get_node_logs", node)]
+        if kind.startswith("svc_unit_"):         # the unit's own output: why it exits (e.g. not enough GPU memory)
+            plan.append(("get_service_logs", f"{node}:{str(res).removesuffix('.service')}"))
+    elif kind.startswith("disk_") or kind.startswith("net_"):
+        plan = [("get_disk_and_network", node), ("get_node_metrics", node), ("get_metric_window", node),
+                ("get_node_logs", node)]
     elif kind == "sec_malicious_file":
         plan = [("get_endpoint_events", "LAB"), ("get_lab_state", "LAB")]
     elif kind == "sec_beaconing":

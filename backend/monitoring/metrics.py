@@ -62,9 +62,11 @@ class _Out:
         self.lines.append(f"{name}{{{lab}}} {num}" if lab else f"{name} {num}")
 
 
-def render(fleet: dict[str, dict | None], services: dict[str, dict], pipeline: dict, detector: dict) -> str:
+def render(fleet: dict[str, dict | None], services: dict[str, dict], pipeline: dict, detector: dict,
+           io: dict[str, dict] | None = None) -> str:
     o = _Out()
     g = "gauge"
+    _render_io(o, io or {})
     for node, d in sorted(fleet.items()):
         o.metric("aiops_node_up", g, "Spark Monitor on the node answered (1) or not (0).", 1 if d else 0, node=node)
         if not d:
@@ -126,6 +128,39 @@ def render(fleet: dict[str, dict | None], services: dict[str, dict], pipeline: d
         o.metric("aiops_audit_events", g, "Audit events in the verified chain.", detector.get("audit_events"))
     o.metric("aiops_detector_scan_error", g, "The last detector scan raised an error (1) or not (0).", 1 if detector.get("error") else 0)
     return "\n".join(o.lines) + "\n"
+
+
+def _render_io(o: _Out, io: dict[str, dict]) -> None:
+    """Disk, network and Wi-Fi from the detector's own collector: {node: {"ok", "sample", "rates"}}."""
+    g, c = "gauge", "counter"
+    for node, x in sorted(io.items()):
+        o.metric("aiops_io_collector_ok", g, "Disk/network counters read from the node on the last scan (1) or not (0).",
+                 1 if x.get("ok") else 0, node=node)
+        sample, r = x.get("sample") or {}, x.get("rates") or {}
+        for dev, d in sorted((sample.get("disks") or {}).items()):
+            o.metric("aiops_disk_read_bytes_total", c, "Bytes read from the block device.", d["read_bytes"], node=node, device=dev)
+            o.metric("aiops_disk_written_bytes_total", c, "Bytes written to the block device.", d["write_bytes"], node=node, device=dev)
+            o.metric("aiops_disk_io_time_seconds_total", c, "Time the device had I/O in flight.", d["io_ms"] / 1000, node=node, device=dev)
+            rd = (r.get("disks") or {}).get(dev) or {}
+            o.metric("aiops_disk_busy_ratio", g, "Share of the last scan interval with I/O in flight, 0-1.", rd.get("busy_ratio"), node=node, device=dev)
+        for nic, d in sorted((sample.get("nics") or {}).items()):
+            for direction in ("rx", "tx"):
+                o.metric("aiops_network_errors_total", c, "Interface receive/transmit errors.", d[f"{direction}_errors"],
+                         node=node, interface=nic, direction=direction)
+                o.metric("aiops_network_dropped_total", c, "Interface receive/transmit drops.", d[f"{direction}_dropped"],
+                         node=node, interface=nic, direction=direction)
+        for nic, state in sorted((sample.get("links") or {}).items()):
+            o.metric("aiops_network_link_up", g, "Physical interface link up (1) or not (0).", 1 if state == "up" else 0,
+                     node=node, interface=nic, state=state)
+        for nic, w in sorted((sample.get("wifi") or {}).items()):
+            lab = {"node": node, "interface": nic}
+            o.metric("aiops_wifi_signal_dbm", g, "Wi-Fi signal, averaged by the driver.", w.get("signal_avg_dbm", w.get("signal_dbm")), **lab)
+            o.metric("aiops_wifi_tx_bitrate_mbps", g, "Wi-Fi transmit bit rate.", w.get("tx_mbps"), **lab)
+            o.metric("aiops_wifi_rx_bitrate_mbps", g, "Wi-Fi receive bit rate.", w.get("rx_mbps"), **lab)
+            o.metric("aiops_wifi_tx_retries_total", c, "Wi-Fi frames retransmitted.", w.get("tx_retries"), **lab)
+            o.metric("aiops_wifi_tx_failed_total", c, "Wi-Fi frames that failed after all retries.", w.get("tx_failed"), **lab)
+            o.metric("aiops_wifi_beacon_loss_total", c, "Wi-Fi beacons missed from the access point.", w.get("beacon_loss"), **lab)
+            o.metric("aiops_wifi_connected_seconds", g, "Seconds since the node (re)associated with the access point.", w.get("connected_s"), **lab)
 
 
 def _open(addr: str) -> bool:

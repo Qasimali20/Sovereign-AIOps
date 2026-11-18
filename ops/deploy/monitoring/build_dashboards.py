@@ -79,10 +79,10 @@ class Board:
 
     def series(self, title: str, targets: list[tuple[str, str]], unit: str, *, w: int = 12, h: int = 8, x: int = 0,
                colour: str | None = None, by_node: bool = False, desc: str = "", max_: float | None = None,
-               stack: bool = False) -> None:
-        defaults = {"unit": unit, "min": 0, "custom": {"lineWidth": 2, "fillOpacity": 8 if not stack else 60,
+               stack: bool = False, min_: float | None = 0) -> None:
+        defaults = {"unit": unit, "min": min_, "custom": {"lineWidth": 2, "fillOpacity": 8 if not stack else 60,
                                                       "showPoints": "never", "spanNulls": 60_000,
-                                                      "axisSoftMin": 0, "stacking": {"mode": "normal" if stack else "none"},
+                                                      "axisSoftMin": min_, "stacking": {"mode": "normal" if stack else "none"},
                                                       "gradientMode": "none"},
                     "color": {"mode": "fixed", "fixedColor": colour} if colour else {"mode": "shades", "fixedColor": "#3d7bf5"}}
         if max_ is not None:
@@ -143,6 +143,22 @@ def fleet() -> Board:
     b.row("Network")
     b.series("Receive", [("aiops_node_network_receive_bytes_per_second", "{{node}}")], "Bps", by_node=True, x=0)
     b.series("Transmit", [("aiops_node_network_transmit_bytes_per_second", "{{node}}")], "Bps", by_node=True, x=12)
+    b.next_row()
+    b.row("Storage and network health")
+    b.series("Disk busy", [("100 * aiops_disk_busy_ratio", "{{node}}")], "percent", by_node=True, max_=100, x=0,
+             desc="Share of time the NVMe drive had I/O in flight. Model loads and downloads saturate it for minutes; "
+                  "the detector alerts at 95% held for 15 minutes.")
+    b.series("Disk throughput (read + write)", [("rate(aiops_disk_read_bytes_total[2m]) + on(node, device) "
+                                                  "rate(aiops_disk_written_bytes_total[2m])", "{{node}}")], "Bps", by_node=True, x=12)
+    b.next_row()
+    b.series("Wi-Fi signal", [("aiops_wifi_signal_dbm", "{{node}}")], "dBm", by_node=True, x=0, min_=None,
+             desc="Every node reaches the office network over Wi-Fi. Normal is -60 to -68 dBm; the detector alerts at -75 dBm held for 3 minutes.")
+    b.series("Wi-Fi retransmissions", [("rate(aiops_wifi_tx_retries_total[5m])", "{{node}}")], "short", by_node=True, x=12,
+             desc="Frames sent again per second. A rise with a steady signal points to interference or a busy channel.")
+    b.next_row()
+    b.series("Interface errors (5 min)", [("sum by (node) (increase(aiops_network_errors_total[5m]))", "{{node}}")], "short",
+             by_node=True, x=0, desc="Receive and transmit errors on physical interfaces (Wi-Fi and ConnectX). Normally zero.")
+    b.series("Wi-Fi transmit bit rate", [("aiops_wifi_tx_bitrate_mbps", "{{node}}")], "Mbits", by_node=True, x=12)
     b.next_row()
     b.row("Availability")
     b.series("Node reporting (1 = up)", [("aiops_node_up", "{{node}}")], "short", by_node=True, x=0, max_=1)

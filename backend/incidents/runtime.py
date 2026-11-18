@@ -21,7 +21,10 @@ VULN_SCAN_S = 6 * 3600      # CVE relevance scan of every node and the lab
 # is itself the positive observation.
 METRIC_KINDS = ("high_memory", "disk_usage", "gpu_temperature", "high_cpu", "gpu_stalled", "model_latency_high",
                 "model_queue_stuck", "service_unhealthy")      # service_unhealthy: health is re-checked every scan
-RECOVERABLE = METRIC_KINDS + ("node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
+# Disk/network rules re-evaluated every scan from the node's own counters (not Spark Monitor): cleared only when
+# that sample was read. disk_error and net_nic_reset come from kernel messages and are closed by a person.
+IO_KINDS = ("disk_io_saturated", "net_errors", "net_link_down", "net_wifi_degraded")
+RECOVERABLE = METRIC_KINDS + IO_KINDS + ("node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
                "svc_container_stopped", "svc_container_unhealthy", "svc_container_restarting",
                "svc_unit_failed", "svc_unit_restarting")
 _BUSY = ("executing", "verifying")     # an action owns these; a pending approval expires if the problem clears
@@ -38,6 +41,12 @@ def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dic
         return None
     if kind == "node_unreachable":
         return f"{node} monitor answering again"
+    if kind in IO_KINDS:
+        if not det.io_ok.get(node):
+            return None
+        return {"net_link_down": f"{res} link up again on {node}", "net_errors": f"no new errors on {res}",
+                "net_wifi_degraded": f"Wi-Fi signal on {node} back above {config.WIFI_SIGNAL_WARN_DBM:.0f} dBm"}.get(
+            kind, f"{res} on {node} no longer saturated")
     if kind == "quality_regression":           # raised from the newest evaluation: cleared by a newer, normal one
         return f"latest evaluation of {res} is back to its usual level"
     if kind in METRIC_KINDS:
@@ -85,6 +94,12 @@ class Runtime:
         self._vuln_at = 0.0
 
     # ------------------------------------------------------------ workflows
+    @property
+    def hostio(self) -> dict[str, dict]:
+        """Latest disk/network/Wi-Fi sample and rates per node, for the exporter and the agent."""
+        d = self._det
+        return {n: {"ok": d.io_ok.get(n, False), "sample": d.io.get(n), "rates": d.io_rates.get(n)} for n in d.io_ok}
+
     @property
     def kernel_coverage(self) -> dict[str, dict]:
         return dict(self._det.kernel_coverage)
@@ -187,9 +202,10 @@ class Runtime:
                               scans=self.scan_info["scans"] + 1, error=None)
         opened = []
         for a in alerts:
-            if a.kind == "model_server_missing" and store.latest_status(a.fingerprint) == "closed":
-                # a person closed it (server retired on purpose): stop tracking that server instead of re-raising
+            if a.kind in ("model_server_missing", "net_link_down") and store.latest_status(a.fingerprint) == "closed":
+                # a person closed it (server retired, cable unplugged on purpose): stop tracking it instead of re-raising
                 self._det.seen_models.get(a.node, set()).discard(a.resource)
+                self._det.links_up.get(a.node, set()).discard(a.resource)
                 continue
             iid, created = store.open_incident(a.kind, a.node, a.resource, a.title, a.fingerprint, a.detail)
             if created:

@@ -244,6 +244,22 @@ def get_services(node: str) -> dict:
                     "problem_units": snap["problem_units"], "application_units": snap["app_units"]})
 
 
+def get_disk_and_network(node: str) -> dict:
+    """Disk I/O (busy share, read/write rates), NIC error and drop counts, link state, Wi-Fi signal and retries, and
+    storage/NIC kernel messages from the last hour: two samples 3 s apart, read on the node itself."""
+    from backend.monitoring import hostio
+    n = NODE_BY_NAME[node]
+    a = hostio.collect(n, time.time() - 3600)
+    if not a["ok"]:
+        raise ToolError(f"disk/network counters not readable on {node}: {a['error']}")
+    time.sleep(3)
+    b = hostio.collect(n, time.time())
+    r = hostio.rates(a, b) if b["ok"] else {}
+    return _result("get_disk_and_network", f"procfs+iw+journal:{node}",
+                   {"disk_rates": r.get("disks"), "nic_error_deltas_3s": r.get("nics"), "nic_totals": a["nics"],
+                    "links": a["links"], "wifi": a["wifi"], "kernel_messages_1h": a["kernel"]})
+
+
 # ---------------------------------------------------------------- logs (Loki)
 def _log_result(tool: str, node: str, incident: dict | None, **kw) -> dict:
     from backend.monitoring import logs
@@ -362,6 +378,7 @@ READONLY_TOOLS = {
     "get_node_metrics": ("node", get_node_metrics),
     "get_model_servers": ("node", get_model_servers),
     "get_node_history": ("node", get_node_history),
+    "get_disk_and_network": ("node", get_disk_and_network),
     "check_endpoint_health": ("resource", check_endpoint_health),
     "inspect_container": ("resource", inspect_container),
     "get_container_logs": ("resource", get_container_logs),

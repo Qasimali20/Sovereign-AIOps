@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 
 from backend.core import config
-from backend.monitoring import kernel
+from backend.monitoring import hostio, kernel
 from backend.incidents.tools import ToolError, check_endpoint_health, inspect_container, monitor_metrics
 
 _pool = ThreadPoolExecutor(max_workers=2 * len(config.NODES), thread_name_prefix="detect")
@@ -42,6 +42,11 @@ class DetectorState:
     reachable: dict[str, bool] = field(default_factory=dict)         # node -> monitor answered this scan
     streak: dict[str, int] = field(default_factory=dict)             # "rule:node[:res]" -> consecutive scans true
     progress: dict[str, dict] = field(default_factory=dict)          # "node:name@port" -> completions + resting gauges
+    io: dict[str, dict] = field(default_factory=dict)                # node -> last good disk/network sample
+    io_rates: dict[str, dict] = field(default_factory=dict)          # node -> rates between the last two samples
+    io_ok: dict[str, bool] = field(default_factory=dict)             # node -> disk/network sample read this scan
+    io_cursor: dict[str, float] = field(default_factory=dict)        # node -> last storage/network kernel message read
+    links_up: dict[str, set[str]] = field(default_factory=dict)      # node -> physical interfaces seen up
 
 
 # ---------------------------------------------------------------- pure rules
@@ -194,6 +199,67 @@ def kernel_alerts(node: config.Node, events: dict, loading: list[dict]) -> list[
     return out
 
 
+def io_alerts(node: config.Node, sample: dict, r: dict, streak: dict[str, int], links_up: set[str]) -> list[Alert]:
+    """Disk and network rules over one sample and its rates. Updates `streak` and `links_up` in place."""
+    out: list[Alert] = []
+    n = node.name
+    for dev, d in r["disks"].items():
+        busy = d["busy_ratio"]
+        key = f"diskbusy:{n}:{dev}"
+        streak[key] = streak.get(key, 0) + 1 if busy is not None and busy >= config.DISK_BUSY_WARN else 0
+        if streak[key] >= config.DISK_BUSY_SCANS:
+            out.append(Alert("disk_io_saturated", n, dev, f"{dev} on {n} busy {busy:.0%} for over {streak[key] // 3} min",
+                             {"device": dev, **{k: round(v, 3) for k, v in d.items() if v is not None},
+                              "threshold": config.DISK_BUSY_WARN, "scans": streak[key]}))
+    for nic, d in r["nics"].items():
+        errs = (d["rx_errors"] or 0) + (d["tx_errors"] or 0)
+        key = f"neterr:{n}:{nic}"
+        streak[key] = streak.get(key, 0) + 1 if errs > 0 else 0
+        if streak[key] >= config.NET_ERROR_SCANS:
+            out.append(Alert("net_errors", n, nic, f"{nic} on {n} reporting receive/transmit errors",
+                             {"interface": nic, "errors_last_scan": d, "totals": sample["nics"].get(nic),
+                              "scans": streak[key]}))
+    links = sample["links"]
+    for nic, state in links.items():
+        if state == "up":
+            links_up.add(nic)
+        elif nic in links_up and state in ("down", "lowerlayerdown", "dormant"):
+            msgs = [k for k in sample["kernel"] if k["area"] == "net" and k["device"] == nic][-5:]
+            out.append(Alert("net_link_down", n, nic, f"{nic} on {n} link is {state}",
+                             {"interface": nic, "state": state, "role": _nic_role(nic), "kernel_messages": msgs}))
+    for nic, w in sample["wifi"].items():
+        sig = w.get("signal_avg_dbm", w.get("signal_dbm"))
+        if sustained(streak, f"wifi:{n}:{nic}", sig is not None and sig <= config.WIFI_SIGNAL_WARN_DBM):
+            out.append(Alert("net_wifi_degraded", n, nic, f"Wi-Fi on {n} weak: {sig:.0f} dBm",
+                             {"interface": nic, "station": w, "threshold_dbm": config.WIFI_SIGNAL_WARN_DBM,
+                              "retries_last_scan": r["wifi"].get(nic)}))
+    return out
+
+
+def _nic_role(nic: str) -> str:
+    if nic.startswith("wl"):
+        return "Wi-Fi: the node's office network and internet connection"
+    if nic.startswith("enp1s0") or nic.startswith("enP2p1s0"):
+        return "ConnectX port: direct node-to-node link"
+    return "wired Ethernet"
+
+
+def io_kernel_alerts(node: config.Node, events: list[dict]) -> list[Alert]:
+    """Storage and NIC kernel messages: one alert per (problem, device), with every matching message."""
+    groups: dict[tuple[str, str], list[dict]] = {}
+    for e in events:
+        if e["what"] == "network link down":       # judged from link state (net_link_down), not from the message
+            continue
+        groups.setdefault((e["what"], e["device"] or e["area"]), []).append(e)
+    out = []
+    for (what, dev), es in groups.items():
+        kind = "disk_error" if es[0]["area"] == "disk" else "net_nic_reset"
+        out.append(Alert(kind, node.name, dev, f"{what} on {node.name} ({dev})",
+                         {"problem": what, "device": dev, "count": len(es), "first": es[0]["t"], "last": es[-1]["t"],
+                          "messages": [e["message"] for e in es[-10:]], "source": "kernel journal"}))
+    return out
+
+
 # ---------------------------------------------------------------- scan
 CURSOR_OVERLAP_S = 60.0
 
@@ -207,13 +273,22 @@ def _gather(node: config.Node, state: DetectorState, now: float):
     events = kernel.read_gpu_events(node, since)
     # journalctl --since has 1 s resolution: drop anything at or before the exact cursor
     events["xids"] = [x for x in events["xids"] if x["t"] > since]
-    return node, metrics, events
+    io = hostio.collect(node, state.io_cursor.get(node.name, now - config.KERNEL_LOOKBACK_S))
+    return node, metrics, events, io
 
 
 def scan(state: DetectorState) -> list[Alert]:
     now = time.time()
     alerts: list[Alert] = []
-    for node, metrics, events in _pool.map(lambda n: _gather(n, state, now), config.NODES):
+    for node, metrics, events, io in _pool.map(lambda n: _gather(n, state, now), config.NODES):
+        state.io_ok[node.name] = io["ok"]
+        if io["ok"]:
+            state.io_rates[node.name] = hostio.rates(state.io.get(node.name), io)
+            state.io[node.name] = io
+            alerts += io_alerts(node, io, state.io_rates[node.name], state.streak, state.links_up.setdefault(node.name, set()))
+            alerts += io_kernel_alerts(node, io["kernel"])
+            newest = max((k["t"] for k in io["kernel"]), default=now - CURSOR_OVERLAP_S)
+            state.io_cursor[node.name] = max(state.io_cursor.get(node.name, 0.0), newest)
         # kernel journal: advance the cursor only on a successful read, so nothing is skipped
         state.kernel_coverage[node.name] = {k: events[k] for k in ("access", "ok", "error", "checked")}
         loading: list[dict] = []
