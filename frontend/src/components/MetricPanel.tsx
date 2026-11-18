@@ -28,6 +28,7 @@ export function fmt(unit: string, v: number | null | undefined, compact = false)
     case 'percent': return `${v.toFixed(a < 10 && !compact ? 1 : 0)}%`
     case 'celsius': return `${v.toFixed(0)}°C`
     case 'watt': return `${v.toFixed(a < 10 ? 1 : 0)} W`
+    case 'gb': return `${v.toFixed(a < 10 ? 1 : 0)} GB`
     case 'Bps': return bytesPerSec(v, compact)
     case 's': {
       const sp = compact ? '' : ' '

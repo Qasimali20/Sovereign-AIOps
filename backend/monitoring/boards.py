@@ -66,9 +66,9 @@ BOARDS: dict[str, dict] = {
         "panels": [
             Panel("cpu", "CPU", "aiops_node_cpu_percent", "percent", max=100, warn=config.CPU_PCT_WARN, peak=True,
                   warn_label="incident if sustained", desc="Peak in each interval.", section="Utilisation"),
-            Panel("mem", "Memory used", "100 * aiops_node_memory_used_bytes / aiops_node_memory_total_bytes", "percent", max=100,
-                  warn=config.MEM_PCT_WARN, warn_label="incident",
-                  desc="Unified memory: model weights and KV cache count here.", section="Utilisation"),
+            Panel("mem", "Memory in use, all Sparks", "aiops_node_memory_used_bytes / 1073741824", "gb", kind="stacked",
+                  desc="Unified memory, stacked: the top edge is the fleet total (4 x 122 GB = 487 GB). Model weights and "
+                       "KV cache count here. Each node raises an incident at 92% of its own 122 GB.", section="Utilisation"),
             Panel("gpu_temp", "GPU temperature", "aiops_gpu_temp_celsius", "celsius", warn=config.GPU_TEMP_WARN, peak=True,
                   warn_label="incident", desc="Peak in each interval.", section="Utilisation"),
             Panel("gpu_power", "Fleet power draw", "aiops_gpu_power_watts", "watt", kind="stacked",

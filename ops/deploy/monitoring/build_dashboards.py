@@ -130,8 +130,9 @@ def fleet() -> Board:
     ])
     b.row("Utilisation")
     b.series("CPU", [("aiops_node_cpu_percent", "{{node}}")], "percent", by_node=True, max_=100, x=0)
-    b.series("Memory used", [("100 * aiops_node_memory_used_bytes / aiops_node_memory_total_bytes", "{{node}}")], "percent",
-             by_node=True, max_=100, x=12, desc="GB10 has unified memory: model weights and KV cache count here. Detector warns at 92%.")
+    b.series("Memory in use, all Sparks", [("aiops_node_memory_used_bytes", "{{node}}")], "bytes", by_node=True, x=12, stack=True,
+             desc="Unified memory, stacked: the top edge is the fleet total. Model weights and KV cache count here. "
+                  "Each node raises an incident at 92% of its own memory.")
     b.next_row()
     b.series("GPU utilisation", [("aiops_gpu_utilization_percent", "{{node}}")], "percent", by_node=True, max_=100, x=0)
     b.series("GPU temperature", [("aiops_gpu_temp_celsius", "{{node}}")], "celsius", by_node=True, x=12)

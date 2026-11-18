@@ -337,12 +337,12 @@
   },
   {
    "type": "timeseries",
-   "title": "Memory used",
-   "description": "GB10 has unified memory: model weights and KV cache count here. Detector warns at 92%.",
+   "title": "Memory in use, all Sparks",
+   "description": "Unified memory, stacked: the top edge is the fleet total. Model weights and KV cache count here. Each node raises an incident at 92% of its own memory.",
    "targets": [
     {
      "refId": "A",
-     "expr": "label_replace(max by (n) (label_replace((100 * aiops_node_memory_used_bytes / aiops_node_memory_total_bytes), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
+     "expr": "label_replace(max by (n) (label_replace((aiops_node_memory_used_bytes), \"n\", \"Node-$1\", \"node\", \"(?:DGX|Node)-(.*)\")), \"node\", \"$1\", \"n\", \"(.*)\")",
      "legendFormat": "{{node}}"
     }
    ],
@@ -359,24 +359,23 @@
    },
    "fieldConfig": {
     "defaults": {
-     "unit": "percent",
+     "unit": "bytes",
      "min": 0,
      "custom": {
       "lineWidth": 2,
-      "fillOpacity": 8,
+      "fillOpacity": 60,
       "showPoints": "never",
       "spanNulls": 60000,
       "axisSoftMin": 0,
       "stacking": {
-       "mode": "none"
+       "mode": "normal"
       },
       "gradientMode": "none"
      },
      "color": {
       "mode": "shades",
       "fixedColor": "#3d7bf5"
-     },
-     "max": 100
+     }
     },
     "overrides": [
      {
