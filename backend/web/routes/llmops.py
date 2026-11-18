@@ -51,3 +51,50 @@ def registry(user: Viewer):
 @router.get("/llm/registry/history")
 def registry_history(user: Viewer, node: str, port: int, model: str):
     return model_registry.history(node[:40], port, model[:200])
+
+
+# ---------------------------------------------------------------- inference intelligence
+@router.get("/llm/perf")
+def perf_view(user: Viewer):
+    """Latest benchmark per server and scenario, with baselines, and the current performance regressions."""
+    from backend.llmops import perf
+    return {"running": perf.running(), "last_run": perf.last_run_at(), "interval_s": perf.INTERVAL_S,
+            "results": perf.latest(), "regressions": perf.regressions(),
+            "guard": {"max_temp_c": perf.MAX_TEMP_C, "max_gpu_util": perf.MAX_GPU_UTIL}}
+
+
+@router.post("/llm/perf/run", status_code=202)
+def run_perf(user: Approver):
+    """Benchmark every quiet chat/vision server now (4 short requests each; busy or hot nodes are skipped)."""
+    from backend.llmops import perf
+    if perf.running() or model_evals.running():
+        raise HTTPException(409, "a benchmark or evaluation run is already in progress")
+    threading.Thread(target=perf.run_all, args=(f"human:{user['username']}",), daemon=True, name="perf-bench").start()
+    return {"started": True}
+
+
+@router.get("/llm/bottlenecks")
+def bottlenecks(user: Viewer, window: str = "1h"):
+    from backend.llmops import bottleneck
+    if window not in bottleneck.WINDOWS:
+        raise HTTPException(422, f"window must be one of {list(bottleneck.WINDOWS)}")
+    try:
+        return bottleneck.analyse(window)
+    except Exception as e:
+        raise HTTPException(502, f"prometheus: {e}") from e
+
+
+@router.get("/capacity")
+def capacity_view(user: Viewer):
+    """Memory room, disk forecast and model traffic trends (recomputed at most every 10 minutes)."""
+    import time
+    from backend.incidents.runtime import runtime
+    from backend.llmops import capacity
+    rep = runtime.capacity_report
+    if not rep or time.time() - rep["generated"] > 600:
+        try:
+            rep = runtime.capacity_report = capacity.report()
+        except Exception as e:
+            if not rep:
+                raise HTTPException(502, f"prometheus: {e}") from e
+    return rep

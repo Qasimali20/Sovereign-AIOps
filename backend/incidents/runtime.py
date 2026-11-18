@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from backend.core import config, store
 from backend.incidents import detector, graph
 from backend.monitoring import drift, events, services
-from backend.llmops import model_evals, model_registry
+from backend.llmops import capacity, model_evals, model_registry, perf
 from backend.security import events as sec_events, rules as sec_rules
 
 SEC_LOOKBACK_S = 3600
@@ -24,7 +24,8 @@ METRIC_KINDS = ("high_memory", "disk_usage", "gpu_temperature", "high_cpu", "gpu
 # Disk/network rules re-evaluated every scan from the node's own counters (not Spark Monitor): cleared only when
 # that sample was read. disk_error and net_nic_reset come from kernel messages and are closed by a person.
 IO_KINDS = ("disk_io_saturated", "net_errors", "net_link_down", "net_wifi_degraded")
-RECOVERABLE = METRIC_KINDS + IO_KINDS + ("config_drift", "node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
+CAPACITY_CHECK_S = 3600
+RECOVERABLE = METRIC_KINDS + IO_KINDS + ("config_drift", "model_perf_regression", "capacity_disk_forecast", "node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
                "svc_container_stopped", "svc_container_unhealthy", "svc_container_restarting",
                "svc_unit_failed", "svc_unit_restarting")
 _BUSY = ("executing", "verifying")     # an action owns these; a pending approval expires if the problem clears
@@ -51,6 +52,10 @@ def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dic
         return {"net_link_down": f"{res} link up again on {node}", "net_errors": f"no new errors on {res}",
                 "net_wifi_degraded": f"Wi-Fi signal on {node} back above {config.WIFI_SIGNAL_WARN_DBM:.0f} dBm"}.get(
             kind, f"{res} on {node} no longer saturated")
+    if kind == "model_perf_regression":        # raised from the newest benchmarks: cleared by a newer, normal one
+        return f"latest benchmarks of {res} are back to the usual level"
+    if kind == "capacity_disk_forecast":       # recomputed hourly; absent only from a successful computation
+        return "disk forecast back beyond the warning horizon" if (drifted or {}).get("_capacity_ok") else None
     if kind == "quality_regression":           # raised from the newest evaluation: cleared by a newer, normal one
         return f"latest evaluation of {res} is back to its usual level"
     if kind in METRIC_KINDS:
@@ -99,6 +104,9 @@ class Runtime:
         self.drift: dict[str, dict] = {}                 # node -> latest configuration reading
         self.drift_changes: dict[str, list[dict] | None] = {}   # node -> differences from its baseline (None: unread)
         self._drift_at = 0.0
+        self.capacity_report: dict | None = None
+        self.capacity_ok = False
+        self._capacity_at = 0.0
 
     # ------------------------------------------------------------ workflows
     @property
@@ -233,7 +241,7 @@ class Runtime:
                 continue                     # let the workflow finish; the next scan picks it up
             why = condition_cleared(inc, self._det, self.services, firing, self._svc_base,
                                     drifted={n: ({c["key"] for c in ch} if ch is not None else None)
-                                             for n, ch in self.drift_changes.items()})
+                                             for n, ch in self.drift_changes.items()} | {"_capacity_ok": self.capacity_ok})
             if why:
                 if inc["status"] == "awaiting_approval":
                     store.expire_pending(inc["id"], f"problem cleared before a decision: {why}")
@@ -274,7 +282,20 @@ class Runtime:
         last = model_evals.last_run_at()
         if not model_evals.running() and (last is None or time.time() - last > model_evals.INTERVAL_S):
             threading.Thread(target=model_evals.run_all, daemon=True, name="model-evals").start()
-        return model_evals.regression_alerts()
+        last_bench = perf.last_run_at()
+        if not perf.running() and not model_evals.running() and (last_bench is None or time.time() - last_bench > perf.INTERVAL_S):
+            threading.Thread(target=perf.run_all, daemon=True, name="perf-bench").start()
+        return model_evals.regression_alerts() + perf.regression_alerts() + self._capacity_alerts()
+
+    def _capacity_alerts(self) -> list:
+        if time.time() - self._capacity_at >= CAPACITY_CHECK_S:
+            self._capacity_at = time.time()
+            try:
+                self.capacity_report, self.capacity_ok = capacity.report(), True
+            except Exception as e:                 # Prometheus unreachable: keep open forecasts open
+                self.capacity_ok = False
+                store.audit(None, "capacity", "error", {"error": repr(e)[:300]})
+        return capacity.alerts(self.capacity_report) if self.capacity_ok and self.capacity_report else []
 
     def _vuln_alerts(self) -> list:
         """Re-scan every VULN_SCAN_S (or when the lab inventory changes); alert on every vulnerable verdict."""

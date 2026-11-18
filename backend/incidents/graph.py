@@ -251,7 +251,7 @@ def collect_evidence(state: State) -> State:
     elif kind.startswith("model_") or kind.startswith("gpu_"):
         plan = [("get_gpu_kernel_events", node), ("get_model_servers", node), ("get_node_metrics", node),
                 ("get_metric_window", node)]
-        port = str(res).rpartition("@")[2]
+        port = str(res).rpartition("@")[2].partition(":")[0]     # "model@port" or "model@port:scenario"
         if kind.startswith("model_") and port.isdigit():
             plan.append(("get_model_logs", f"{node}:{port}"))   # the model server's own logs first
         plan.append(("get_node_logs", node))
