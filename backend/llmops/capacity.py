@@ -109,7 +109,7 @@ def report() -> dict:
         d = fleet.get(n.name) or {}
         mem = d.get("memory") or {}
         reserved = [{"model": s.get("name"), "share": s.get("mem_fraction"), "status": s.get("status")}
-                    for s in d.get("vllm") or [] if s.get("engine", "vllm") in ("vllm", "sglang")]
+                    for s in d.get("vllm") or [] if s.get("engine") != "ollama"]     # Ollama loads on demand
         nodes[n.name] = {
             "memory": memory_room(mem["used"], mem["total"], mem_peak.get(n.name), reserved) if mem.get("total") else None,
             "disk": disk_forecast(disk_used[n.name], disk_total[n.name], disk_daily.get(n.name, []))
