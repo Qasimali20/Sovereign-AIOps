@@ -31,7 +31,8 @@
         msg: "deploying {{ commit.stdout }} (running: {{ (running.content | default('') | b64decode | trim) or 'unknown' }})"
 
     - name: Backend dependencies
-      ansible.builtin.command: {chdir: "{{ root }}", cmd: uv sync --frozen}
+      # --inexact: keep packages outside the default groups (Ansible itself runs from this environment)
+      ansible.builtin.command: {chdir: "{{ root }}", cmd: uv sync --frozen --inexact}
       register: sync
       changed_when: "'Installed' in sync.stderr or 'Uninstalled' in sync.stderr"
 
