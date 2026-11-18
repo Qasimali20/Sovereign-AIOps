@@ -275,6 +275,30 @@ All under **Models** (tabs) and **Governance → Agent runs** in the console:
   tokens, retries, fallbacks). Approvers rate each diagnosis Correct / Partly right / Wrong, which gives the
   diagnosis accuracy figure.
 
+### Inference intelligence
+- **Benchmarks** (`backend/llmops/perf.py`, Models → Performance): every 6 hours each ready chat/vision server gets
+  two streamed scenarios sent straight to the server, twice each at concurrency 1: a short prompt with exactly 128
+  output tokens (time to first token, output speed) and a ~2k-token prompt with 16 output tokens (prompt speed).
+  Every prompt starts with a fresh nonce so the prefix cache cannot help. A server is benchmarked only when quiet:
+  GPU under 70 °C and under 30% busy, no requests in flight, no quality evaluation running; otherwise the reason is
+  recorded. Ports the platform cannot reach (Node-1's firewalled 8011) are skipped. Approvers can start a run.
+- **Regressions:** a server's two newest runs both worse than the median of its earlier runs (output speed down
+  more than 25%, or first token up more than 50% and by at least 0.15 s) raise `model_perf_regression`, noting
+  whether the model registry saw a version change. It clears when a newer run is back to normal.
+- **Bottlenecks** (`backend/llmops/bottleneck.py`): from each server's vLLM metrics over 1 h to 7 days, the split
+  of request time into queue, prefill and decode, KV-cache peak and preemptions, prompt and output lengths, prefix
+  cache hits, GPU use and busy neighbours on the same node. Rules: requests queuing, KV cache full, GPU shared with
+  busy servers, slower under load than idle, prefill-bound, decode-bound (normal on GB10, bound by memory bandwidth).
+  Each finding carries its numbers and what to change.
+- **Capacity** (`backend/llmops/capacity.py`, Capacity page, recomputed hourly): per node, memory in use, free and
+  its 7-day peak, and the largest `--gpu-memory-utilization` a model server starting now could ask for: vLLM
+  refuses to start below that, which is what stopped Qwen3.6 on Node-4 after the 18 Nov reboot. Measured free
+  memory decides, not the shares servers were started with (a two-stage vLLM-Omni server holds more than its flag).
+  Disk: the typical daily change (median of day-to-day changes, so a model download is not read as a daily rate),
+  days to 85% at that pace, the largest one-day jump and how many more like it fit. A disk projected to reach 85%
+  within 14 days raises `capacity_disk_forecast`. Models: requests per day, the weekly trend (needs 5 days), and
+  peak requests in flight and KV use over 7 days.
+
 ### Security testing: prompt injection (Phase 7)
 See Prompt-injection assessment in `docs/architecture.md`. Deterministic tests with a hijacked fake model
 (`tests/test_injection.py`) plus a live evaluation of 5 attacks planted in container logs
