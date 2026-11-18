@@ -260,6 +260,20 @@ def get_disk_and_network(node: str) -> dict:
                     "links": a["links"], "wifi": a["wifi"], "kernel_messages_1h": a["kernel"]})
 
 
+def get_config_drift(node: str) -> dict:
+    """What is configured on the node now against its accepted baseline: changed, added and removed systemd units,
+    long-lived containers, host versions and SSH/sudo settings, with a diff for each (fresh read)."""
+    from backend.monitoring import drift
+    snap = drift.collect(NODE_BY_NAME[node])
+    if not snap["ok"]:
+        raise ToolError(f"configuration not readable on {node}: {snap['error']}")
+    base = drift.load_baseline().get(node)
+    if not base:
+        raise ToolError(f"no configuration baseline for {node} yet")
+    return _result("get_config_drift", f"drift:{node}", {"baseline_at": base.get("updated") or base["at"],
+                                                         "changes": drift.compare(base["items"], snap["items"])})
+
+
 # ---------------------------------------------------------------- logs (Loki)
 def _log_result(tool: str, node: str, incident: dict | None, **kw) -> dict:
     from backend.monitoring import logs
@@ -379,6 +393,7 @@ READONLY_TOOLS = {
     "get_model_servers": ("node", get_model_servers),
     "get_node_history": ("node", get_node_history),
     "get_disk_and_network": ("node", get_disk_and_network),
+    "get_config_drift": ("node", get_config_drift),
     "check_endpoint_health": ("resource", check_endpoint_health),
     "inspect_container": ("resource", inspect_container),
     "get_container_logs": ("resource", get_container_logs),

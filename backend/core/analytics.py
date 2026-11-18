@@ -24,6 +24,7 @@ CATEGORY_SQL = ("CASE WHEN kind LIKE 'sec\\_%' ESCAPE '\\' THEN 'Security' "
                 "WHEN kind LIKE 'model\\_%' ESCAPE '\\' THEN 'Models' "
                 "WHEN kind LIKE 'gpu\\_%' ESCAPE '\\' THEN 'GPU' "
                 "WHEN kind LIKE 'svc\\_%' ESCAPE '\\' OR kind = 'service_unhealthy' THEN 'Services' "
+                "WHEN kind = 'config_drift' THEN 'Configuration' "
                 "WHEN kind IN ('node_unreachable', 'node_rebooted', 'high_cpu', 'high_memory') "
                 "OR kind LIKE 'disk\\_%' ESCAPE '\\' OR kind LIKE 'net\\_%' ESCAPE '\\' THEN 'Nodes' "
                 "ELSE 'Other' END")

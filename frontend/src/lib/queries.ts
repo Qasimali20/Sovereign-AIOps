@@ -44,6 +44,16 @@ export const useModelBoard = (model: string, range: string) =>
 export const useMetricsBoard = (board: string, range: string) =>
   useQuery({ queryKey: ['metrics-board', board, range], queryFn: () => api.metricsBoard(board, range),
     refetchInterval: range === '1h' ? 30 * SEC : 120 * SEC, placeholderData: prev => prev })
+export const useDrift = () => useQuery({ queryKey: ['drift'], queryFn: api.drift, refetchInterval: 30 * SEC })
+export function useDriftAccept() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: (v: { node: string; keys: string[] | null; reason: string }) => api.driftAccept(v.node, v.keys, v.reason),
+    onSuccess: () => ['drift', 'incidents', 'audit'].forEach(k => qc.invalidateQueries({ queryKey: [k] })) })
+}
+export function useDriftCheck() {
+  const qc = useQueryClient()
+  return useMutation({ mutationFn: api.driftCheck, onSuccess: () => qc.invalidateQueries({ queryKey: ['drift'] }) })
+}
 export const useServices = () => useQuery({ queryKey: ['services'], queryFn: api.services, refetchInterval: 15 * SEC })
 export const useSecurity = (hours = 24) => useQuery({ queryKey: keys.security(hours), queryFn: () => api.security(hours), refetchInterval: 5 * SEC })
 export function useRunLab() {

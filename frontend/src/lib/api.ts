@@ -249,6 +249,12 @@ export type ModelVersion = { id: string; node: string; port: number; model: stri
   evals_since?: { runs: number; mean: number | null }; evals_before?: { runs: number; mean: number | null } | null }
 export type RegistryState = { refresh_s: number; models: ModelVersion[]; changes: AuditEvent[] }
 
+// Configuration drift: each node against its accepted baseline
+export type DriftChange = { key: string; change: 'added' | 'removed' | 'changed'; before: string | null; after: string | null; diff: string }
+export type DriftNode = { ok: boolean; error: string | null; checked: number | null; baseline_at: number | null; baseline_by: string | null
+  updated: number | null; updated_by: string | null; items: number; changes: DriftChange[] | null; inventory: Record<string, string> }
+export type DriftState = { nodes: Record<string, DriftNode>; inconsistent: Record<string, Record<string, string>>; interval_s: number }
+
 export const api = {
   me: () => req<User>('/me'),
   login: (username: string, password: string) => req<User>('/login', { username, password }),
@@ -259,6 +265,10 @@ export const api = {
   metricsBoard: (board: string, range: string) => req<Board>(`/metrics/board/${q(board)}?range=${q(range)}`),
   nodeHistory: (node: string, range: string) => req<NodeHistory>(`/fleet/${q(node)}/history?range=${q(range)}`),
   services: () => req<Record<string, NodeServices>>('/services'),
+  drift: () => req<DriftState>('/drift'),
+  driftAccept: (node: string, keys: string[] | null, reason: string) =>
+    req<{ accepted: string[]; remaining: DriftChange[] }>('/drift/accept', { node, keys, reason }),
+  driftCheck: () => req<Record<string, number | null>>('/drift/check', {}),
   security: (hours = 24) => req<SecurityOverview>(`/security/overview?hours=${hours}`),
   runLab: (scenario: string) => req<{ ok: boolean; events: number; opened: { id: string; title: string }[] }>(`/security/lab/${q(scenario)}`, {}),
   resetLab: () => req<{ ok: boolean }>('/security/lab-reset', {}),

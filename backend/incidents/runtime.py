@@ -9,7 +9,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from backend.core import config, store
 from backend.incidents import detector, graph
-from backend.monitoring import events, services
+from backend.monitoring import drift, events, services
 from backend.llmops import model_evals, model_registry
 from backend.security import events as sec_events, rules as sec_rules
 
@@ -24,19 +24,23 @@ METRIC_KINDS = ("high_memory", "disk_usage", "gpu_temperature", "high_cpu", "gpu
 # Disk/network rules re-evaluated every scan from the node's own counters (not Spark Monitor): cleared only when
 # that sample was read. disk_error and net_nic_reset come from kernel messages and are closed by a person.
 IO_KINDS = ("disk_io_saturated", "net_errors", "net_link_down", "net_wifi_degraded")
-RECOVERABLE = METRIC_KINDS + IO_KINDS + ("node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
+RECOVERABLE = METRIC_KINDS + IO_KINDS + ("config_drift", "node_unreachable", "quality_regression", "model_server_missing", "model_load_stalled",
                "svc_container_stopped", "svc_container_unhealthy", "svc_container_restarting",
                "svc_unit_failed", "svc_unit_restarting")
 _BUSY = ("executing", "verifying")     # an action owns these; a pending approval expires if the problem clears
 
 
 def condition_cleared(inc: dict, det: detector.DetectorState, svc: dict[str, dict], firing: set[str],
-                      svc_base: services.Baseline | None = None, now: float | None = None) -> str | None:
+                      svc_base: services.Baseline | None = None, now: float | None = None,
+                      drifted: dict[str, set[str] | None] | None = None) -> str | None:
     """Pure: evidence that the incident's condition is gone, or None. Absence of the alert alone is not enough
     (an unreachable node raises nothing about its models); each kind needs a positive observation."""
     if inc["fingerprint"] in firing:
         return None
     kind, node, res = inc["kind"], inc["node"], inc["resource"]
+    if kind == "config_drift":                  # judged from the drift check alone (its own SSH read, every 5 min)
+        now_drifted = (drifted or {}).get(node)
+        return None if now_drifted is None or res in now_drifted else f"{res} matches the baseline again (reverted or accepted)"
     if not det.reachable.get(node):
         return None
     if kind == "node_unreachable":
@@ -92,6 +96,9 @@ class Runtime:
         self.audit_check: dict = {"ok": None, "checked": None}
         self.vulns: dict[str, dict] = {}
         self._vuln_at = 0.0
+        self.drift: dict[str, dict] = {}                 # node -> latest configuration reading
+        self.drift_changes: dict[str, list[dict] | None] = {}   # node -> differences from its baseline (None: unread)
+        self._drift_at = 0.0
 
     # ------------------------------------------------------------ workflows
     @property
@@ -197,7 +204,8 @@ class Runtime:
         # A stopped model container is the same event as its model disappearing: keep the model-level incident.
         svc_alerts = [a for a in svc_alerts if not (a.kind == "svc_container_stopped" and self._det.missing.get(a.node)
                                                     and is_model_container(a, self.services))]
-        alerts = det_alerts + sec_rules.evaluate(time.time()) + svc_alerts + self._vuln_alerts() + self._eval_alerts()
+        alerts = det_alerts + sec_rules.evaluate(time.time()) + svc_alerts + self._vuln_alerts() + self._eval_alerts() \
+            + self._drift_alerts()
         self.scan_info.update(last=time.time(), last_alerts=len(alerts),
                               scans=self.scan_info["scans"] + 1, error=None)
         opened = []
@@ -223,11 +231,41 @@ class Runtime:
         for inc in store.open_incidents_of(RECOVERABLE):
             if inc["status"] in _BUSY or self.is_running(inc["id"]):
                 continue                     # let the workflow finish; the next scan picks it up
-            why = condition_cleared(inc, self._det, self.services, firing, self._svc_base)
+            why = condition_cleared(inc, self._det, self.services, firing, self._svc_base,
+                                    drifted={n: ({c["key"] for c in ch} if ch is not None else None)
+                                             for n, ch in self.drift_changes.items()})
             if why:
                 if inc["status"] == "awaiting_approval":
                     store.expire_pending(inc["id"], f"problem cleared before a decision: {why}")
                 store.mark_recovered(inc["id"], inc["created"], why)
+
+    def check_drift(self) -> None:
+        """Read every node's configuration and compare it with its baseline (the first reading becomes the baseline)."""
+        base = drift.load_baseline()
+        for node, snap in self._pool.map(lambda n: (n.name, drift.collect(n)), config.NODES):
+            self.drift[node] = snap
+            if not snap["ok"]:
+                self.drift_changes[node] = None
+                continue
+            if node not in base and drift.ensure_baseline(node, snap["items"]):
+                base = drift.load_baseline()
+            self.drift_changes[node] = drift.compare(base[node]["items"], snap["items"])
+        self._drift_at = time.time()
+
+    def _drift_alerts(self) -> list:
+        if time.time() - self._drift_at >= drift.CHECK_INTERVAL_S:
+            self.check_drift()
+        base = drift.load_baseline()
+        out = []
+        for node, changes in self.drift_changes.items():
+            for c in changes or []:
+                what = c["key"].replace(":", " ", 1)
+                out.append(services.ServiceAlert(
+                    "config_drift", node, c["key"], f"Configuration {c['change']} on {node}: {what}",
+                    c | {"baseline_at": (base.get(node) or {}).get("updated") or (base.get(node) or {}).get("at"),
+                         "how_to_resolve": "put the item back, or accept the current configuration as the new baseline "
+                                           "on the Drift page (admin, audited)"}))
+        return out
 
     def _eval_alerts(self) -> list:
         """Start the scheduled model evaluation when due (in its own thread: it takes about a minute), and alert on

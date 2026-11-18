@@ -260,6 +260,8 @@ def collect_evidence(state: State) -> State:
                 ("get_metric_window", node), ("get_node_logs", node)]
         if kind.startswith("svc_unit_"):         # the unit's own output: why it exits (e.g. not enough GPU memory)
             plan.append(("get_service_logs", f"{node}:{str(res).removesuffix('.service')}"))
+    elif kind == "config_drift":
+        plan = [("get_config_drift", node), ("get_services", node), ("get_model_servers", node)]
     elif kind.startswith("disk_") or kind.startswith("net_"):
         plan = [("get_disk_and_network", node), ("get_node_metrics", node), ("get_metric_window", node),
                 ("get_node_logs", node)]

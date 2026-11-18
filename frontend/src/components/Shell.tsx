@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
-import {
+import { GitCompare,
   BarChart3, BookOpenCheck, PanelLeftClose, PanelLeftOpen, Boxes, ClipboardCheck, Cpu, LayoutDashboard, LogOut, Menu, Search, ShieldCheck, ShieldAlert, UserCog, Users, Siren, Container,
 } from 'lucide-react'
 import { DEMO, type IncidentRow, type SystemInfo, type User } from '../lib/api'
@@ -150,6 +150,7 @@ export default function Shell({ user, onLogout, children }: { user: User; onLogo
         <div className="sb-section">Infrastructure</div><div className="sb-section-gap" />
         <NavItem to="/fleet" icon={<Cpu size={17} />}>Fleet</NavItem>
         <NavItem to="/services" icon={<Container size={17} />}>Services</NavItem>
+        <NavItem to="/drift" icon={<GitCompare size={17} />}>Drift</NavItem>
         <NavItem to="/models" icon={<Boxes size={17} />}>Models</NavItem>
         <NavItem to="/history" icon={<BarChart3 size={17} />}>Metric history</NavItem>
         <div className="sb-section">Governance</div><div className="sb-section-gap" />

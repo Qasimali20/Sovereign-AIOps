@@ -340,6 +340,21 @@ without one, and how often each section is retrieved and used; `aiops_rag_sectio
   searches it during investigations. The console shows node history from Prometheus and links to
   Grafana as "Metric history".
 
+### Configuration drift
+Every 5 minutes the platform reads each node's configuration over SSH (`backend/monitoring/drift.py`, read-only):
+host versions (kernel, OS, NVIDIA driver, Docker, CUDA), every application systemd unit as `systemctl cat` prints it
+(system units and the tmc user's units, drop-ins and enabled state included), every long-lived container (image and
+image id, command, restart policy, ports, mounts, environment variable names with a hash of each value), and SSH
+access (sshd configuration hash, authorized key fingerprints, sudoers.d file names). Environment values that look
+like keys, tokens or passwords are masked before anything is stored; container environment values never leave the
+node.
+
+The first reading of a node is its baseline (`data/drift_baseline.json`, mode 600). Any difference opens a
+`config_drift` incident per item with a diff; changes made inside a maintenance window are recorded as planned
+work. The incident clears when the item is put back, or when an admin accepts the current configuration as the
+new baseline on the Drift page (per item or all, with a reason, audited as `drift_accepted`). The Drift page
+also lists host versions that differ between nodes; that is shown for information and is not drift.
+
 ### Log strategy
 One pipeline, one store, one place to search: every node runs the same collector (Grafana Alloy,
 `ops/deploy/logs-agent`), which ships to Loki on Node-3. The console, the investigation agent and Grafana all

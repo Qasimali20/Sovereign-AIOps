@@ -18,7 +18,7 @@ export const STATUS_COLOR: Record<string, string> = {
   resolved: 'var(--good)', recovered: 'var(--s1)', awaiting_approval: 'var(--warn)', action_rejected: '#8b8478',
   closed: '#5f5a51', open: 'var(--s2)', diagnosed: 'var(--s3)', needs_human: 'var(--s4)', not_resolved: 'var(--crit)', action_denied: 'var(--crit)', investigating: 'var(--s4)', executing: 'var(--s4)', verifying: 'var(--s4)', failed: 'var(--crit)',
   sre: 'var(--s1)', security: 'var(--s2)',
-  Services: 'var(--s1)', Models: 'var(--s2)', GPU: 'var(--s3)', Security: 'var(--s4)', Nodes: 'var(--m-disk)', Other: 'var(--muted)',
+  Services: 'var(--s1)', Models: 'var(--s2)', GPU: 'var(--s3)', Security: 'var(--s4)', Nodes: 'var(--m-disk)', Configuration: 'var(--m-mem)', Other: 'var(--muted)',
 }
 
 export function fmt(unit: string, v: number | null | undefined, compact = false): string {
