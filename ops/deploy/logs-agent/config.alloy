@@ -69,6 +69,9 @@ local.file_match "service_files" {
     {__path__ = "/host-logs/desktop/asr.log", service = "vllm-asr"},
     {__path__ = "/host-logs/desktop/tts.log", service = "vllm-tts"},
     {__path__ = "/host-logs/desktop/whisper.log", service = "vllm-whisper"},
+    {__path__ = "/host-logs/desktop/qwen36.log", service = "vllm-qwen36"},
+    {__path__ = "/host-logs/desktop/qwen38.log", service = "vllm-qwen38"},
+    {__path__ = "/host-logs/desktop/omni.log", service = "omni"},
   ]
 }
 
