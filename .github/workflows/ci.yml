@@ -1,0 +1,53 @@
+# Continuous integration: tests, build and repository hygiene on every push and pull request.
+# Deliberately no deployment: GitHub cannot reach the fleet, and deployments go through the
+# platform's own approval and maintenance-window workflow (docs/operations.md, "Controlled deployments").
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: No addresses or credentials
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 ops/scripts/check_repo_hygiene.py
+
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+      # Tests that need the live fleet (Prometheus, Loki, the gateway) skip themselves when unreachable.
+      - run: uv run pytest tests -q
+
+  frontend:
+    name: Console lint and build
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
