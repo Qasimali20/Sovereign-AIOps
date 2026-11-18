@@ -49,7 +49,8 @@ def build(fleet: dict[str, dict | None], services: dict[str, dict] | None = None
         add(Vertex(f"node:{n.name}", "node", n.name, n.name, UP if d else DOWN))
         for s in (d or {}).get("vllm") or []:
             sid = f"server:{n.name}/{s['name']}@{s['port']}"
-            add(Vertex(sid, "server", f"{s['name']} :{s['port']}", n.name, UP if s.get("status") == "ready" else DOWN,
+            ok = s.get("status") == "ready" or (s.get("engine") == "ollama" and s.get("status") == "idle")   # loads on demand
+            add(Vertex(sid, "server", f"{s['name']} :{s['port']}", n.name, UP if ok else DOWN,
                        [Req([f"node:{n.name}"], why=f"runs on {n.name}")]))
             replicas.setdefault(s["name"], []).append(sid)
         stacks: dict[str, int] = {}

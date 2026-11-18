@@ -10,9 +10,9 @@ const ORDER = ['component', 'server', 'stack'] as const
 function Item({ v, active, onPick }: { v: GVertex; active: boolean; onPick: (id: string) => void }) {
   return (
     <li>
-      <button className={`btn btn-sm ${active ? 'btn-primary' : ''}`} style={{ width: '100%', justifyContent: 'space-between' }}
+      <button className={`btn btn-sm ${active ? 'btn-primary' : ''}`} style={{ width: '100%', minWidth: 0, justifyContent: 'space-between', gap: 8 }}
         onClick={() => onPick(v.id)} title={v.why || TYPE[v.type]}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.label}</span>
+        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left' }}>{v.label}</span>
         {v.state !== 'up' && <Badge tone={TONE[v.state]}>{v.state}</Badge>}
       </button>
     </li>
